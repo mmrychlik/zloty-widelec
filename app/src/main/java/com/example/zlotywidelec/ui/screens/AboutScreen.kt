@@ -1,5 +1,6 @@
 package com.example.zlotywidelec.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
@@ -11,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.zlotywidelec.ui.theme.BeigeBackground
 import com.example.zlotywidelec.ui.theme.DarkText
 
 @Composable
@@ -18,6 +20,7 @@ fun AboutScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(BeigeBackground)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -36,7 +39,7 @@ fun AboutScreen() {
             color = DarkText
         )
         Text(
-            text = "Twój inteligentny asystent w kuchni",
+            text = "Przepisy",
             fontSize = 18.sp,
             color = DarkText.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
@@ -44,7 +47,7 @@ fun AboutScreen() {
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Wersja 1.0.0",
+            text = "Wersja 0.0.1",
             fontSize = 14.sp,
             color = DarkText.copy(alpha = 0.5f)
         )

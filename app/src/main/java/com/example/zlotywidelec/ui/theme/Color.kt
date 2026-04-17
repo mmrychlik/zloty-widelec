@@ -6,7 +6,6 @@ val BeigeBackground = Color(0xFFF7EFE2)
 val BeigeAccent = Color(0xFFEEDCBF)
 val DarkText = Color(0xFF2D2926)
 val GrayText = Color(0xFF8C8479)
-val ItemDot = Color(0xFF5D574F)
 val CheckboxBorder = Color(0xFF5D574F)
 
 val Purple80 = Color(0xFFD0BCFF)

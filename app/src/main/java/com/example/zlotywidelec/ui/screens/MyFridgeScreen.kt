@@ -1,6 +1,6 @@
 package com.example.zlotywidelec.ui.screens
 
-import androidx.compose.foundation.background
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,42 +8,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Kitchen
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.zlotywidelec.data.local.entity.FridgeItemEntity
+import com.example.zlotywidelec.data.local.entity.IngredientEntity
 import com.example.zlotywidelec.ui.theme.BeigeAccent
 import com.example.zlotywidelec.ui.theme.BeigeBackground
 import com.example.zlotywidelec.ui.theme.DarkText
 import com.example.zlotywidelec.ui.viewmodel.FridgeViewModel
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun MyFridgeScreen(viewModel: FridgeViewModel) {
     val fridgeItems by viewModel.fridgeItems.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
-
-    val filteredItems = remember(fridgeItems, searchQuery) {
-        if (searchQuery.isBlank()) {
-            fridgeItems
-        } else {
-            fridgeItems.filter {
-                it.name.contains(searchQuery, ignoreCase = true)
-            }
-        }
-    }
 
     Scaffold(
         floatingActionButton = {
@@ -62,33 +44,11 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text("Szukaj produktów...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BeigeAccent,
-                    unfocusedBorderColor = DarkText.copy(alpha = 0.3f),
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                )
-            )
-
-            if (filteredItems.isEmpty()) {
-                if (searchQuery.isNotEmpty()) {
-                    NoResultsFridgeMessage(searchQuery)
-                } else {
+            if (fridgeItems.isEmpty()) {
                     EmptyFridgeMessage()
-                }
             } else {
                 FridgeItemList(
-                    items = filteredItems,
+                    items = fridgeItems,
                     onDelete = { viewModel.deleteItem(it) }
                 )
             }
@@ -98,8 +58,8 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
     if (showAddDialog) {
         AddFridgeItemDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, quantity ->
-                viewModel.addItem(name, quantity)
+            onConfirm = { name, amount, unit ->
+                viewModel.addItem(name, amount, unit)
                 showAddDialog = false
             }
         )
@@ -130,25 +90,9 @@ fun EmptyFridgeMessage() {
 }
 
 @Composable
-fun NoResultsFridgeMessage(query: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Brak produktów dla: \"$query\"",
-            color = DarkText.copy(alpha = 0.5f),
-            fontSize = 18.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(32.dp)
-        )
-    }
-}
-
-@Composable
 fun FridgeItemList(
-    items: List<FridgeItemEntity>,
-    onDelete: (FridgeItemEntity) -> Unit
+    items: List<IngredientEntity>,
+    onDelete: (IngredientEntity) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -163,7 +107,7 @@ fun FridgeItemList(
 
 @Composable
 fun FridgeItemRow(
-    item: FridgeItemEntity,
+    item: IngredientEntity,
     onDelete: () -> Unit
 ) {
     Card(
@@ -186,21 +130,10 @@ fun FridgeItemRow(
                     color = DarkText
                 )
                 Text(
-                    text = "Ilość: ${item.quantity}",
+                    text = "Ilość: ${if (item.amount % 1.0 == 0.0) item.amount.toInt() else item.amount} ${item.unit}",
                     fontSize = 14.sp,
                     color = DarkText.copy(alpha = 0.7f)
                 )
-                item.expirationDate?.let { dateMillis ->
-                    val date = Instant.ofEpochMilli(dateMillis)
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate()
-                    val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy")
-                    Text(
-                        text = "Ważność: ${date.format(formatter)}",
-                        fontSize = 12.sp,
-                        color = if (date.isBefore(LocalDate.now())) Color.Red else DarkText.copy(alpha = 0.5f)
-                    )
-                }
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Usuń", tint = Color.Gray)
@@ -212,10 +145,11 @@ fun FridgeItemRow(
 @Composable
 fun AddFridgeItemDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (String, Double, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
+    var amountStr by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -233,22 +167,42 @@ fun AddFridgeItemDialog(
                         unfocusedTextColor = DarkText
                     )
                 )
-                TextField(
-                    value = quantity,
-                    onValueChange = { quantity = it },
-                    label = { Text("Ilość (np. 2 szt, 500g)") },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedTextColor = DarkText,
-                        unfocusedTextColor = DarkText
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextField(
+                        value = amountStr,
+                        onValueChange = { amountStr = it },
+                        label = { Text("Ilość") },
+                        modifier = Modifier.weight(1f),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedTextColor = DarkText,
+                            unfocusedTextColor = DarkText
+                        )
                     )
-                )
+                    TextField(
+                        value = unit,
+                        onValueChange = { unit = it },
+                        label = { Text("Jednostka") },
+                        modifier = Modifier.weight(1f),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedTextColor = DarkText,
+                            unfocusedTextColor = DarkText
+                        )
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
-                onClick = { if (name.isNotBlank()) onConfirm(name, quantity) },
+                onClick = { 
+                    if (name.isNotBlank()) {
+                        val amount = amountStr.toDoubleOrNull() ?: 1.0
+                        onConfirm(name, amount, unit)
+                    }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = BeigeAccent)
             ) {
                 Text("Dodaj")

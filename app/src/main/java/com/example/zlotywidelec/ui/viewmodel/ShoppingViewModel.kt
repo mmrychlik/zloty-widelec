@@ -3,48 +3,70 @@ package com.example.zlotywidelec.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.zlotywidelec.data.local.dao.ShoppingDao
-import com.example.zlotywidelec.data.local.entity.ShoppingItemEntity
+import com.example.zlotywidelec.data.local.dao.IngredientDao
+import com.example.zlotywidelec.data.local.entity.IngredientEntity
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class ShoppingViewModel(private val shoppingDao: ShoppingDao) : ViewModel() {
+class ShoppingViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
 
-    val shoppingItems: StateFlow<List<ShoppingItemEntity>> = shoppingDao.getAllItems()
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    val shoppingItems: StateFlow<List<IngredientEntity>> = ingredientDao.getShoppingListItems()
+        .combine(_searchQuery) { items, query ->
+            if (query.isBlank()) {
+                items
+            } else {
+                items.filter { it.name.contains(query, ignoreCase = true) }
+            }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    fun addItem(name: String, quantity: String) {
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun addItem(name: String, amount: Double, unit: String) {
         viewModelScope.launch {
-            shoppingDao.insertItem(
-                ShoppingItemEntity(name = name, quantity = quantity)
+            ingredientDao.insertIngredient(
+                IngredientEntity(name = name, amount = amount, unit = unit)
             )
         }
     }
 
-    fun toggleItemChecked(item: ShoppingItemEntity) {
+    fun toggleItemChecked(item: IngredientEntity) {
         viewModelScope.launch {
-            shoppingDao.updateItem(item.copy(isChecked = !item.isChecked))
+            ingredientDao.updateIngredient(item.copy(isChecked = !item.isChecked))
         }
     }
 
-    fun deleteItem(item: ShoppingItemEntity) {
+    fun deleteItem(item: IngredientEntity) {
         viewModelScope.launch {
-            shoppingDao.deleteItem(item)
+            ingredientDao.deleteIngredient(item)
+        }
+    }
+
+    fun moveCheckedToFridge() {
+        viewModelScope.launch {
+            ingredientDao.moveCheckedToFridge()
         }
     }
 }
 
-class ShoppingViewModelFactory(private val shoppingDao: ShoppingDao) : ViewModelProvider.Factory {
+class ShoppingViewModelFactory(private val ingredientDao: IngredientDao) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ShoppingViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ShoppingViewModel(shoppingDao) as T
+            return ShoppingViewModel(ingredientDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -6,52 +6,52 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import com.example.zlotywidelec.data.local.entity.ShoppingItemEntity
+import com.example.zlotywidelec.data.local.entity.IngredientEntity
 import com.example.zlotywidelec.ui.theme.*
 import com.example.zlotywidelec.ui.viewmodel.ShoppingViewModel
 
 @Composable
 fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     val items by viewModel.shoppingItems.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
 
-    val filteredItems = remember(items, searchQuery) {
-        if (searchQuery.isBlank()) {
-            items
-        } else {
-            items.filter {
-                it.name.contains(searchQuery, ignoreCase = true)
-            }
-        }
-    }
+    val hasCheckedItems = items.any { it.isChecked }
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = BeigeAccent,
-                contentColor = DarkText
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Item")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (hasCheckedItems) {
+                    ExtendedFloatingActionButton(
+                        onClick = { viewModel.moveCheckedToFridge() },
+                        containerColor = BeigeAccent,
+                        contentColor = DarkText,
+                        icon = { Icon(Icons.Default.Kitchen, contentDescription = "Add to fridge") },
+                        text = { Text("Do lodówki") }
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                }
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    containerColor = BeigeAccent,
+                    contentColor = DarkText
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Item")
+                }
             }
         },
         containerColor = BeigeBackground
@@ -62,33 +62,16 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                 .padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text("Szukaj produktów...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BeigeAccent,
-                    unfocusedBorderColor = DarkText.copy(alpha = 0.3f),
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                )
-            )
-
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+                contentPadding = PaddingValues(start = 24.dp, top = 16.dp, end = 24.dp, bottom = 80.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(filteredItems, key = { it.id }) { item ->
+                items(items, key = { it.id }) { item ->
                     ShoppingListItem(
                         item = item,
-                        onCheckedChange = { viewModel.toggleItemChecked(item) }
+                        onCheckedChange = { viewModel.toggleItemChecked(item) },
+                        onDelete = { viewModel.deleteItem(item) }
                     )
                     HorizontalDivider(color = GrayText.copy(alpha = 0.2f))
                 }
@@ -99,8 +82,8 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     if (showAddDialog) {
         AddItemDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { name, quantity ->
-                viewModel.addItem(name, quantity)
+            onConfirm = { name, amount, unit ->
+                viewModel.addItem(name, amount, unit)
                 showAddDialog = false
             }
         )
@@ -109,8 +92,9 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
 
 @Composable
 fun ShoppingListItem(
-    item: ShoppingItemEntity,
-    onCheckedChange: (Boolean) -> Unit
+    item: IngredientEntity,
+    onCheckedChange: (Boolean) -> Unit,
+    onDelete: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -118,14 +102,19 @@ fun ShoppingListItem(
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(16.dp)
-                .clip(CircleShape)
-                .background(if (item.isChecked) GrayText else ItemDot)
-        )
+        IconButton(
+            onClick = onDelete,
+            modifier = Modifier.size(24.dp)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Usuń",
+                tint = if (item.isChecked) GrayText else Color.Red,
+                modifier = Modifier.size(24.dp)
+            )
+        }
         
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(8.dp))
         
         Column(modifier = Modifier.weight(1.0f)) {
             Text(
@@ -134,9 +123,9 @@ fun ShoppingListItem(
                 color = if (item.isChecked) GrayText else DarkText,
                 textDecoration = if (item.isChecked) TextDecoration.LineThrough else null
             )
-            if (item.quantity.isNotEmpty()) {
+            if (item.amount > 0) {
                 Text(
-                    text = item.quantity,
+                    text = "${if (item.amount % 1.0 == 0.0) item.amount.toInt() else item.amount} ${item.unit}",
                     fontSize = 14.sp,
                     color = GrayText
                 )
@@ -156,7 +145,7 @@ fun ShoppingListItem(
                 Icon(
                     Icons.Default.Check,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(14.dp),
                     tint = DarkText
                 )
             }
@@ -167,97 +156,74 @@ fun ShoppingListItem(
 @Composable
 fun AddItemDialog(
     onDismiss: () -> Unit,
-    onAdd: (String, String) -> Unit
+    onConfirm: (String, Double, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
+    var amountStr by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("") }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .background(BeigeBackground)
-                    .padding(24.dp)
-                    .fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(GrayText.copy(alpha = 0.5f))
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Text(
-                    text = "Dodaj produkt do listy",
-                    fontSize = 18.sp,
-                    color = DarkText
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Dodaj do listy") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextField(
                     value = name,
                     onValueChange = { name = it },
-                    placeholder = { Text("Nazwa", color = GrayText) },
-                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Nazwa produktu") },
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = BeigeAccent.copy(alpha = 0.3f),
-                        unfocusedContainerColor = BeigeAccent.copy(alpha = 0.3f),
-                        disabledContainerColor = BeigeAccent.copy(alpha = 0.3f),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
                         focusedTextColor = DarkText,
                         unfocusedTextColor = DarkText
-                    ),
-                    shape = RoundedCornerShape(8.dp)
+                    )
                 )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                TextField(
-                    value = quantity,
-                    onValueChange = { quantity = it },
-                    placeholder = { Text("Ilość (Opcjonalnie)", color = GrayText) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = BeigeAccent.copy(alpha = 0.3f),
-                        unfocusedContainerColor = BeigeAccent.copy(alpha = 0.3f),
-                        disabledContainerColor = BeigeAccent.copy(alpha = 0.3f),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = DarkText,
-                        unfocusedTextColor = DarkText
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    IconButton(
-                        onClick = { if (name.isNotBlank()) onAdd(name, quantity) },
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(BeigeAccent)
-                            .size(48.dp)
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = "Add", tint = DarkText)
-                    }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextField(
+                        value = amountStr,
+                        onValueChange = { amountStr = it },
+                        label = { Text("Ilość") },
+                        modifier = Modifier.weight(1f),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedTextColor = DarkText,
+                            unfocusedTextColor = DarkText
+                        )
+                    )
+                    TextField(
+                        value = unit,
+                        onValueChange = { unit = it },
+                        label = { Text("Jednostka") },
+                        modifier = Modifier.weight(1f),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedTextColor = DarkText,
+                            unfocusedTextColor = DarkText
+                        )
+                    )
                 }
             }
-        }
-    }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (name.isNotBlank()) {
+                        val amount = amountStr.toDoubleOrNull() ?: 1.0
+                        onConfirm(name, amount, unit)
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BeigeAccent)
+            ) {
+                Text("Dodaj")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Anuluj", color = DarkText)
+            }
+        },
+        containerColor = Color.White
+    )
 }

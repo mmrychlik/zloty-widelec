@@ -3,12 +3,13 @@ package com.example.zlotywidelec.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "fridge_items")
-data class FridgeItemEntity(
+@Entity(tableName = "ingredients")
+data class IngredientEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val name: String,
-    val quantity: String,
-    val expirationDate: Long? = null,
-    val isFromSmartFridge: Boolean = false
+    val amount: Double,
+    val unit: String = "",
+    val isChecked: Boolean = false,
+    val isInFridge: Boolean = false
 )

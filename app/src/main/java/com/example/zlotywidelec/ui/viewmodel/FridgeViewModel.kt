@@ -3,75 +3,63 @@ package com.example.zlotywidelec.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.example.zlotywidelec.data.local.dao.FridgeDao
-import com.example.zlotywidelec.data.local.entity.FridgeItemEntity
+import com.example.zlotywidelec.data.local.dao.IngredientDao
+import com.example.zlotywidelec.data.local.entity.IngredientEntity
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class FridgeViewModel(private val fridgeDao: FridgeDao) : ViewModel() {
+class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
 
-    val fridgeItems: StateFlow<List<FridgeItemEntity>> = fridgeDao.getAllItems()
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery
+
+    val fridgeItems: StateFlow<List<IngredientEntity>> = ingredientDao.getFridgeItems()
+        .combine(_searchQuery) { items, query ->
+            if (query.isBlank()) {
+                items
+            } else {
+                items.filter { it.name.contains(query, ignoreCase = true) }
+            }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    fun addItem(name: String, quantity: String, expirationDate: Long? = null) {
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun addItem(name: String, amount: Double, unit: String) {
         viewModelScope.launch {
-            fridgeDao.insertItem(
-                FridgeItemEntity(
+            ingredientDao.insertIngredient(
+                IngredientEntity(
                     name = name,
-                    quantity = quantity,
-                    expirationDate = expirationDate
+                    amount = amount,
+                    unit = unit,
+                    isInFridge = true
                 )
             )
         }
     }
 
-    fun deleteItem(item: FridgeItemEntity) {
+    fun deleteItem(item: IngredientEntity) {
         viewModelScope.launch {
-            fridgeDao.deleteItem(item)
-        }
-    }
-
-    fun updateItem(item: FridgeItemEntity) {
-        viewModelScope.launch {
-            fridgeDao.updateItem(item)
-        }
-    }
-
-    fun removeIngredients(ingredients: List<Pair<String, String>>) {
-        viewModelScope.launch {
-            ingredients.forEach { (name, _) ->
-                // Basic implementation: delete items by name
-                // In a real app, you'd probably want to subtract quantities
-                fridgeDao.deleteByName(name)
-            }
-        }
-    }
-
-    fun syncWithSmartFridge() {
-        viewModelScope.launch {
-            // Mocking an API call with delay
-            kotlinx.coroutines.delay(1500)
-            val smartItems = listOf(
-                FridgeItemEntity(name = "Mleko (Smart)", quantity = "1L", isFromSmartFridge = true),
-                FridgeItemEntity(name = "Jajka (Smart)", quantity = "6 szt", isFromSmartFridge = true),
-                FridgeItemEntity(name = "Ser żółty (Smart)", quantity = "200g", isFromSmartFridge = true)
-            )
-            smartItems.forEach { fridgeDao.insertItem(it) }
+            ingredientDao.deleteIngredient(item)
         }
     }
 }
 
-class FridgeViewModelFactory(private val fridgeDao: FridgeDao) : ViewModelProvider.Factory {
+class FridgeViewModelFactory(private val ingredientDao: IngredientDao) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(FridgeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return FridgeViewModel(fridgeDao) as T
+            return FridgeViewModel(ingredientDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
