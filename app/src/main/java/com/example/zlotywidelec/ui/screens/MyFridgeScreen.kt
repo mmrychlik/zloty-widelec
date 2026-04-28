@@ -6,8 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Kitchen
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,9 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
-import com.example.zlotywidelec.ui.theme.BeigeAccent
-import com.example.zlotywidelec.ui.theme.BeigeBackground
-import com.example.zlotywidelec.ui.theme.DarkText
 import com.example.zlotywidelec.ui.viewmodel.FridgeViewModel
 
 @Composable
@@ -31,13 +28,14 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
-                containerColor = BeigeAccent,
-                contentColor = DarkText
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Dodaj produkt")
             }
         },
-        containerColor = BeigeBackground
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Column(
             modifier = Modifier
@@ -77,12 +75,12 @@ fun EmptyFridgeMessage() {
                 Icons.Default.Kitchen,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = DarkText.copy(alpha = 0.3f)
+                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Twoja lodówka jest pusta",
-                color = DarkText.copy(alpha = 0.5f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                 fontSize = 18.sp
             )
         }
@@ -96,7 +94,7 @@ fun FridgeItemList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(items) { item ->
@@ -110,9 +108,11 @@ fun FridgeItemRow(
     item: IngredientEntity,
     onDelete: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -127,16 +127,42 @@ fun FridgeItemRow(
                     text = item.name,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium,
-                    color = DarkText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Ilość: ${if (item.amount % 1.0 == 0.0) item.amount.toInt() else item.amount} ${item.unit}",
                     fontSize = 14.sp,
-                    color = DarkText.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Usuń", tint = Color.Gray)
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "Opcje",
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Szczegóły", color = MaterialTheme.colorScheme.onSurface) },
+                        onClick = {
+                            showMenu = false
+                            // TODO: View details
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Usuń", color = Color.Red) },
+                        onClick = {
+                            showMenu = false
+                            onDelete()
+                        }
+                    )
+                }
             }
         }
     }
@@ -153,7 +179,7 @@ fun AddFridgeItemDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Dodaj do lodówki") },
+        title = { Text("Dodaj do lodówki", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextField(
@@ -163,8 +189,8 @@ fun AddFridgeItemDialog(
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
-                        focusedTextColor = DarkText,
-                        unfocusedTextColor = DarkText
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -176,8 +202,8 @@ fun AddFridgeItemDialog(
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
-                            focusedTextColor = DarkText,
-                            unfocusedTextColor = DarkText
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     TextField(
@@ -188,8 +214,8 @@ fun AddFridgeItemDialog(
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
-                            focusedTextColor = DarkText,
-                            unfocusedTextColor = DarkText
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                 }
@@ -203,16 +229,16 @@ fun AddFridgeItemDialog(
                         onConfirm(name, amount, unit)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = BeigeAccent)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)
             ) {
                 Text("Dodaj")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Anuluj", color = DarkText)
+                Text("Anuluj", color = MaterialTheme.colorScheme.onSurface)
             }
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }

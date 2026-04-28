@@ -12,15 +12,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.zlotywidelec.ui.theme.BeigeBackground
-import com.example.zlotywidelec.ui.theme.DarkText
 
 @Composable
 fun AboutScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BeigeBackground)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -29,19 +27,19 @@ fun AboutScreen() {
             Icons.Default.Info,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
-            tint = DarkText.copy(alpha = 0.5f)
+            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "Złoty Widelec",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = DarkText
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = "Przepisy",
             fontSize = 18.sp,
-            color = DarkText.copy(alpha = 0.7f),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
@@ -49,7 +47,7 @@ fun AboutScreen() {
         Text(
             text = "Wersja 0.0.1",
             fontSize = 14.sp,
-            color = DarkText.copy(alpha = 0.5f)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
         )
     }
 }

@@ -10,8 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Kitchen
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,7 +23,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
-import com.example.zlotywidelec.ui.theme.*
 import com.example.zlotywidelec.ui.viewmodel.ShoppingViewModel
 
 @Composable
@@ -38,8 +38,8 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                 if (hasCheckedItems) {
                     ExtendedFloatingActionButton(
                         onClick = { viewModel.moveCheckedToFridge() },
-                        containerColor = BeigeAccent,
-                        contentColor = DarkText,
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary,
                         icon = { Icon(Icons.Default.Kitchen, contentDescription = "Add to fridge") },
                         text = { Text("Do lodówki") }
                     )
@@ -47,14 +47,15 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                 }
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
-                    containerColor = BeigeAccent,
-                    contentColor = DarkText
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Item")
                 }
             }
         },
-        containerColor = BeigeBackground
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Column(
             modifier = Modifier
@@ -62,18 +63,22 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                 .padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 24.dp, top = 16.dp, end = 24.dp, bottom = 80.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(items, key = { it.id }) { item ->
-                    ShoppingListItem(
-                        item = item,
-                        onCheckedChange = { viewModel.toggleItemChecked(item) },
-                        onDelete = { viewModel.deleteItem(item) }
-                    )
-                    HorizontalDivider(color = GrayText.copy(alpha = 0.2f))
+            if (items.isEmpty()) {
+                EmptyShoppingListMessage()
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 100.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(items, key = { it.id }) { item ->
+                        ShoppingListItem(
+                            item = item,
+                            onCheckedChange = { viewModel.toggleItemChecked(item) },
+                            onDelete = { viewModel.deleteItem(item) }
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f))
+                    }
                 }
             }
         }
@@ -87,6 +92,29 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                 showAddDialog = false
             }
         )
+    }
+}
+
+@Composable
+fun EmptyShoppingListMessage() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.ShoppingCart,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Twoja lista zakupów jest pusta",
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                fontSize = 18.sp
+            )
+        }
     }
 }
 
@@ -107,10 +135,10 @@ fun ShoppingListItem(
             modifier = Modifier.size(24.dp)
         ) {
             Icon(
-                Icons.Default.Close,
+                Icons.Default.FiberManualRecord,
                 contentDescription = "Usuń",
-                tint = if (item.isChecked) GrayText else Color.Red,
-                modifier = Modifier.size(24.dp)
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.size(8.dp)
             )
         }
         
@@ -120,14 +148,14 @@ fun ShoppingListItem(
             Text(
                 text = item.name,
                 fontSize = 18.sp,
-                color = if (item.isChecked) GrayText else DarkText,
+                color = if (item.isChecked) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onBackground,
                 textDecoration = if (item.isChecked) TextDecoration.LineThrough else null
             )
             if (item.amount > 0) {
                 Text(
                     text = "${if (item.amount % 1.0 == 0.0) item.amount.toInt() else item.amount} ${item.unit}",
                     fontSize = 14.sp,
-                    color = GrayText
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
             }
         }
@@ -135,9 +163,9 @@ fun ShoppingListItem(
         Box(
             modifier = Modifier
                 .size(24.dp)
-                .border(1.dp, CheckboxBorder, RoundedCornerShape(4.dp))
+                .border(1.dp, MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                 .clip(RoundedCornerShape(4.dp))
-                .background(if (item.isChecked) BeigeAccent else Color.Transparent)
+                .background(if (item.isChecked) MaterialTheme.colorScheme.secondary else Color.Transparent)
                 .clickable { onCheckedChange(!item.isChecked) },
             contentAlignment = Alignment.Center
         ) {
@@ -146,7 +174,7 @@ fun ShoppingListItem(
                     Icons.Default.Check,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
-                    tint = DarkText
+                    tint = MaterialTheme.colorScheme.onSecondary
                 )
             }
         }
@@ -164,7 +192,7 @@ fun AddItemDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Dodaj do listy") },
+        title = { Text("Dodaj do listy", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextField(
@@ -174,8 +202,8 @@ fun AddItemDialog(
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
-                        focusedTextColor = DarkText,
-                        unfocusedTextColor = DarkText
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -187,8 +215,8 @@ fun AddItemDialog(
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
-                            focusedTextColor = DarkText,
-                            unfocusedTextColor = DarkText
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                     TextField(
@@ -199,8 +227,8 @@ fun AddItemDialog(
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
-                            focusedTextColor = DarkText,
-                            unfocusedTextColor = DarkText
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                         )
                     )
                 }
@@ -214,16 +242,16 @@ fun AddItemDialog(
                         onConfirm(name, amount, unit)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = BeigeAccent)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)
             ) {
                 Text("Dodaj")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Anuluj", color = DarkText)
+                Text("Anuluj", color = MaterialTheme.colorScheme.onSurface)
             }
         },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }

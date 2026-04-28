@@ -26,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -45,8 +44,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ZlotyWidelecTheme {
-                ZlotyWidelecApp()
+            val settingsViewModel: SettingsViewModel = viewModel()
+            val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
+            
+            ZlotyWidelecTheme(darkTheme = isDarkMode) {
+                ZlotyWidelecApp(settingsViewModel)
             }
         }
     }
@@ -54,7 +56,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ZlotyWidelecApp() {
+fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel) {
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
     val shoppingViewModel: ShoppingViewModel = viewModel(
@@ -70,6 +72,16 @@ fun ZlotyWidelecApp() {
     
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+
+    val navSuiteItemColors = NavigationSuiteDefaults.itemColors(
+        navigationBarItemColors = NavigationBarItemDefaults.colors(
+            selectedIconColor = MaterialTheme.colorScheme.onBackground,
+            selectedTextColor = MaterialTheme.colorScheme.onBackground,
+            unselectedIconColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            unselectedTextColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+            indicatorColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f)
+        )
+    )
 
     LaunchedEffect(isSearchActive) {
         if (isSearchActive) {
@@ -95,136 +107,145 @@ fun ZlotyWidelecApp() {
                         shoppingViewModel.setSearchQuery("")
                         fridgeViewModel.setSearchQuery("")
                     },
+                    colors = navSuiteItemColors
                 )
             }
         },
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.background,
         navigationSuiteColors = NavigationSuiteDefaults.colors(
-            navigationBarContainerColor = Color.White,
-            navigationBarContentColor = DarkText
+            navigationBarContainerColor = MaterialTheme.colorScheme.background,
+            navigationBarContentColor = MaterialTheme.colorScheme.onBackground
         )
-    ) {
+    )
+{
         Scaffold(
             topBar = {
-                TopAppBar(
-                    navigationIcon = {
-                        if (isSearchActive && currentDestination.showSearch) {
-                            IconButton(onClick = { 
-                                isSearchActive = false
-                                shoppingViewModel.setSearchQuery("")
-                                fridgeViewModel.setSearchQuery("")
-                            }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Cofnij",
-                                    tint = DarkText
-                                )
+                Column {
+                    TopAppBar(
+                        navigationIcon = {
+                            if (isSearchActive && currentDestination.showSearch) {
+                                IconButton(onClick = { 
+                                    isSearchActive = false
+                                    shoppingViewModel.setSearchQuery("")
+                                    fridgeViewModel.setSearchQuery("")
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                        contentDescription = "Cofnij",
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
                             }
-                        }
-                    },
-                    title = {
-                        if (isSearchActive && currentDestination.showSearch) {
-                            val searchQuery = when (currentDestination) {
-                                AppDestinations.SHOPPING_LIST -> shoppingViewModel.searchQuery.collectAsState().value
-                                AppDestinations.MY_FRIDGE -> fridgeViewModel.searchQuery.collectAsState().value
-                                else -> ""
-                            }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .fillMaxHeight(),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                BasicTextField(
-                                    value = searchQuery,
-                                    onValueChange = {
-                                        when (currentDestination) {
-                                            AppDestinations.SHOPPING_LIST -> shoppingViewModel.setSearchQuery(it)
-                                            AppDestinations.MY_FRIDGE -> fridgeViewModel.setSearchQuery(it)
-                                            else -> {}
-                                        }
-                                    },
-                                    textStyle = TextStyle(
-                                        color = DarkText,
-                                        fontSize = 20.sp // Slightly adjusted to look better in the bar
-                                    ),
-                                    cursorBrush = SolidColor(DarkText),
+                        },
+                        title = {
+                            if (isSearchActive && currentDestination.showSearch) {
+                                val searchQuery = when (currentDestination) {
+                                    AppDestinations.SHOPPING_LIST -> shoppingViewModel.searchQuery.collectAsState().value
+                                    AppDestinations.MY_FRIDGE -> fridgeViewModel.searchQuery.collectAsState().value
+                                    else -> ""
+                                }
+                                
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .focusRequester(focusRequester),
-                                    singleLine = true,
-                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                                    decorationBox = { innerTextField ->
-                                        if (searchQuery.isEmpty()) {
-                                            Text(
-                                                text = "Szukaj...",
-                                                color = DarkText.copy(alpha = 0.5f),
-                                                fontSize = 20.sp
-                                            )
+                                        .fillMaxHeight(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    BasicTextField(
+                                        value = searchQuery,
+                                        onValueChange = {
+                                            when (currentDestination) {
+                                                AppDestinations.SHOPPING_LIST -> shoppingViewModel.setSearchQuery(it)
+                                                AppDestinations.MY_FRIDGE -> fridgeViewModel.setSearchQuery(it)
+                                                else -> {}
+                                            }
+                                        },
+                                        textStyle = TextStyle(
+                                            color = MaterialTheme.colorScheme.onBackground,
+                                            fontSize = 20.sp // Slightly adjusted to look better in the bar
+                                        ),
+                                        cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .focusRequester(focusRequester),
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                                        decorationBox = { innerTextField ->
+                                            if (searchQuery.isEmpty()) {
+                                                Text(
+                                                    text = "Szukaj...",
+                                                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                                                    fontSize = 20.sp
+                                                )
+                                            }
+                                            innerTextField()
                                         }
-                                        innerTextField()
-                                    }
-                                )
+                                    )
+                                }
+                            } else {
+                                Text(currentDestination.label, color = MaterialTheme.colorScheme.onBackground)
                             }
-                        } else {
-                            Text(currentDestination.label, color = DarkText)
-                        }
-                    },
-                    actions = {
-                        if (!isSearchActive && currentDestination.showSearch) {
-                            IconButton(onClick = { isSearchActive = true }) {
-                                Icon(Icons.Default.Search, contentDescription = "Szukaj", tint = DarkText)
+                        },
+                        actions = {
+                            if (!isSearchActive && currentDestination.showSearch) {
+                                IconButton(onClick = { isSearchActive = true }) {
+                                    Icon(Icons.Default.Search, contentDescription = "Szukaj", tint = MaterialTheme.colorScheme.onBackground)
+                                }
                             }
-                        }
-                        
-                        Box {
-                            IconButton(onClick = { showMenu = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = DarkText)
+                            
+                            Box {
+                                IconButton(onClick = { showMenu = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onBackground)
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false },
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Ustawienia", color = MaterialTheme.colorScheme.onSurface) },
+                                        onClick = {
+                                            showMenu = false
+                                            isSearchActive = false
+                                            currentDestination = AppDestinations.SETTINGS
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("O aplikacji", color = MaterialTheme.colorScheme.onSurface) },
+                                        onClick = {
+                                            showMenu = false
+                                            isSearchActive = false
+                                            currentDestination = AppDestinations.ABOUT
+                                        }
+                                    )
+                                }
                             }
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                                containerColor = Color.White
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Ustawienia", color = DarkText) },
-                                    onClick = {
-                                        showMenu = false
-                                        isSearchActive = false
-                                        currentDestination = AppDestinations.SETTINGS
-                                    }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("O aplikacji", color = DarkText) },
-                                    onClick = {
-                                        showMenu = false
-                                        isSearchActive = false
-                                        currentDestination = AppDestinations.ABOUT
-                                    }
-                                )
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = BeigeBackground
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.background
+                        )
                     )
-                )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+                }
+            },
+            bottomBar = {
+                HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
             }
-        ) { padding ->
+        )
+{ padding ->
             Box(
                 modifier = Modifier
                     .padding(padding)
                     .fillMaxSize()
-                    .background(BeigeBackground)
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 when (currentDestination) {
                     AppDestinations.SHOPPING_LIST -> ShoppingListScreen(viewModel = shoppingViewModel)
                     AppDestinations.MY_FRIDGE -> MyFridgeScreen(viewModel = fridgeViewModel)
                     AppDestinations.RECIPES -> RecipesScreen()
                     AppDestinations.CHEFS_RECIPES -> ChefsRecipesScreen()
-                    AppDestinations.SETTINGS -> SettingsScreen()
+                    AppDestinations.SETTINGS -> SettingsScreen(viewModel = settingsViewModel)
                     AppDestinations.ABOUT -> AboutScreen()
                 }
             }
