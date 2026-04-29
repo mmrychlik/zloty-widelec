@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class ShoppingViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
 
@@ -37,8 +38,11 @@ class ShoppingViewModel(private val ingredientDao: IngredientDao) : ViewModel() 
 
     fun addItem(name: String, amount: Double, unit: String) {
         viewModelScope.launch {
+            val capitalizedName = name.trim().replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+            }
             ingredientDao.insertIngredient(
-                IngredientEntity(name = name, amount = amount, unit = unit)
+                IngredientEntity(name = capitalizedName, amount = amount, unit = unit)
             )
         }
     }
@@ -57,7 +61,7 @@ class ShoppingViewModel(private val ingredientDao: IngredientDao) : ViewModel() 
 
     fun moveCheckedToFridge() {
         viewModelScope.launch {
-            ingredientDao.moveCheckedToFridge()
+            ingredientDao.moveCheckedToFridge(System.currentTimeMillis())
         }
     }
 }

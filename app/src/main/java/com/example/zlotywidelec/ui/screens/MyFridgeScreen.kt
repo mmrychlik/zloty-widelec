@@ -1,10 +1,10 @@
 package com.example.zlotywidelec.ui.screens
 
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.MoreVert
@@ -17,12 +17,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
+import com.example.zlotywidelec.ui.viewmodel.FridgeSortOrder
 import com.example.zlotywidelec.ui.viewmodel.FridgeViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 @Composable
 fun MyFridgeScreen(viewModel: FridgeViewModel) {
     val fridgeItems by viewModel.fridgeItems.collectAsState()
+    val sortOrder by viewModel.sortOrder.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var selectedItemForDetails by remember { mutableStateOf<IngredientEntity?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -42,12 +49,34 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
                 .padding(padding)
                 .fillMaxSize()
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
+                Text(
+                    text = if (sortOrder == FridgeSortOrder.ALPHABETICAL) "Sortowanie: A-Z" else "Sortowanie: Data",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                )
+                IconButton(onClick = { viewModel.toggleSortOrder() }) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Sort,
+                        contentDescription = "Zmień sortowanie",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
             if (fridgeItems.isEmpty()) {
-                    EmptyFridgeMessage()
+                EmptyFridgeMessage()
             } else {
                 FridgeItemList(
                     items = fridgeItems,
-                    onDelete = { viewModel.deleteItem(it) }
+                    onDelete = { viewModel.deleteItem(it) },
+                    onShowDetails = { selectedItemForDetails = it }
                 )
             }
         }
@@ -60,6 +89,13 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
                 viewModel.addItem(name, amount, unit)
                 showAddDialog = false
             }
+        )
+    }
+
+    selectedItemForDetails?.let { item ->
+        IngredientDetailsDialog(
+            item = item,
+            onDismiss = { selectedItemForDetails = null }
         )
     }
 }
@@ -90,15 +126,20 @@ fun EmptyFridgeMessage() {
 @Composable
 fun FridgeItemList(
     items: List<IngredientEntity>,
-    onDelete: (IngredientEntity) -> Unit
+    onDelete: (IngredientEntity) -> Unit,
+    onShowDetails: (IngredientEntity) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, top = 24.dp, end = 16.dp, bottom = 100.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items(items) { item ->
-            FridgeItemRow(item = item, onDelete = { onDelete(item) })
+            FridgeItemRow(
+                item = item,
+                onDelete = { onDelete(item) },
+                onShowDetails = { onShowDetails(item) }
+            )
         }
     }
 }
@@ -106,9 +147,14 @@ fun FridgeItemList(
 @Composable
 fun FridgeItemRow(
     item: IngredientEntity,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onShowDetails: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val daysAgo = remember(item.addedAt) {
+        val diff = System.currentTimeMillis() - item.addedAt
+        TimeUnit.MILLISECONDS.toDays(diff)
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -129,11 +175,19 @@ fun FridgeItemRow(
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "Ilość: ${if (item.amount % 1.0 == 0.0) item.amount.toInt() else item.amount} ${item.unit}",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Ilość: ${if (item.amount % 1.0 == 0.0) item.amount.toInt() else item.amount} ${item.unit}",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "• dodano ${if (daysAgo == 0L) "dzisiaj" else "$daysAgo dni temu"}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
             }
             Box {
                 IconButton(onClick = { showMenu = true }) {
@@ -152,7 +206,7 @@ fun FridgeItemRow(
                         text = { Text("Szczegóły", color = MaterialTheme.colorScheme.onSurface) },
                         onClick = {
                             showMenu = false
-                            // TODO: View details
+                            onShowDetails()
                         }
                     )
                     DropdownMenuItem(
@@ -166,6 +220,32 @@ fun FridgeItemRow(
             }
         }
     }
+}
+
+@Composable
+fun IngredientDetailsDialog(
+    item: IngredientEntity,
+    onDismiss: () -> Unit
+) {
+    val sdf = remember { SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()) }
+    val dateString = remember(item.addedAt) { sdf.format(Date(item.addedAt)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(item.name, color = MaterialTheme.colorScheme.onSurface) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Ilość: ${if (item.amount % 1.0 == 0.0) item.amount.toInt() else item.amount} ${item.unit}")
+                Text("Data dodania: $dateString")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zamknij", color = MaterialTheme.colorScheme.primary)
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface
+    )
 }
 
 @Composable

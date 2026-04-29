@@ -21,6 +21,6 @@ interface IngredientDao {
     @Delete
     suspend fun deleteIngredient(ingredient: IngredientEntity)
 
-    @Query("UPDATE ingredients SET isInFridge = 1, isChecked = 0 WHERE isChecked = 1 AND isInFridge = 0")
-    suspend fun moveCheckedToFridge()
+    @Query("UPDATE ingredients SET isInFridge = 1, isChecked = 0, addedAt = :timestamp WHERE isChecked = 1 AND isInFridge = 0")
+    suspend fun moveCheckedToFridge(timestamp: Long = System.currentTimeMillis())
 }

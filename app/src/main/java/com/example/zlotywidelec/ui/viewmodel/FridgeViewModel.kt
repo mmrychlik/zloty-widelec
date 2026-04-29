@@ -11,20 +11,37 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.Locale
+
+enum class FridgeSortOrder {
+    ALPHABETICAL,
+    DATE_ADDED
+}
 
 class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    val fridgeItems: StateFlow<List<IngredientEntity>> = ingredientDao.getFridgeItems()
-        .combine(_searchQuery) { items, query ->
-            if (query.isBlank()) {
-                items
-            } else {
-                items.filter { it.name.contains(query, ignoreCase = true) }
-            }
+    private val _sortOrder = MutableStateFlow(FridgeSortOrder.ALPHABETICAL)
+    val sortOrder: StateFlow<FridgeSortOrder> = _sortOrder
+
+    val fridgeItems: StateFlow<List<IngredientEntity>> = combine(
+        ingredientDao.getFridgeItems(),
+        _searchQuery,
+        _sortOrder
+    ) { items, query, sortOrder ->
+        val filtered = if (query.isBlank()) {
+            items
+        } else {
+            items.filter { it.name.contains(query, ignoreCase = true) }
         }
+
+        when (sortOrder) {
+            FridgeSortOrder.ALPHABETICAL -> filtered.sortedBy { it.name }
+            FridgeSortOrder.DATE_ADDED -> filtered.sortedByDescending { it.addedAt }
+        }
+    }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -35,14 +52,26 @@ class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
         _searchQuery.value = query
     }
 
+    fun toggleSortOrder() {
+        _sortOrder.value = if (_sortOrder.value == FridgeSortOrder.ALPHABETICAL) {
+            FridgeSortOrder.DATE_ADDED
+        } else {
+            FridgeSortOrder.ALPHABETICAL
+        }
+    }
+
     fun addItem(name: String, amount: Double, unit: String) {
         viewModelScope.launch {
+            val capitalizedName = name.trim().replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+            }
             ingredientDao.insertIngredient(
                 IngredientEntity(
-                    name = name,
+                    name = capitalizedName,
                     amount = amount,
                     unit = unit,
-                    isInFridge = true
+                    isInFridge = true,
+                    addedAt = System.currentTimeMillis()
                 )
             )
         }
