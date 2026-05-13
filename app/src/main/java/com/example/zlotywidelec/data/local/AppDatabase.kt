@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.zlotywidelec.data.local.dao.IngredientDao
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
+import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -14,7 +15,7 @@ import kotlinx.coroutines.launch
 @Database(
     entities = [
         IngredientEntity::class,
-        com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity::class
+        ProductSuggestionEntity::class
     ],
     version = 12,
     exportSchema = false
@@ -42,7 +43,7 @@ abstract class AppDatabase : RoomDatabase() {
         }
 
         private class DatabaseCallback(
-            private val context: Context
+            context: Context
         ) : RoomDatabase.Callback() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
@@ -67,16 +68,16 @@ abstract class AppDatabase : RoomDatabase() {
                 
                 // Initial Suggestions
                 val initialSuggestions = listOf(
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Mleko", "litr", "nabiał"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Chleb", "bochenek", "pieczywo"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Jajka", "szt.", "nabiał"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Boczek", "g", "mięso"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Mąka", "kg", "zbożowe"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Cukier", "kg", "przyprawy"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Masło", "szt.", "nabiał"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Woda", "l", ""),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Sól", "g", "przyprawy"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Pieprz", "g", "przyprawy")
+                    ProductSuggestionEntity("Mleko", "litr", "nabiał"),
+                    ProductSuggestionEntity("Chleb", "bochenek", "pieczywo"),
+                    ProductSuggestionEntity("Jajka", "szt.", "nabiał"),
+                    ProductSuggestionEntity("Boczek", "g", "mięso"),
+                    ProductSuggestionEntity("Mąka", "kg", "zbożowe"),
+                    ProductSuggestionEntity("Cukier", "kg", "przyprawy"),
+                    ProductSuggestionEntity("Masło", "szt.", "nabiał"),
+                    ProductSuggestionEntity("Woda", "l", ""),
+                    ProductSuggestionEntity("Sól", "g", "przyprawy"),
+                    ProductSuggestionEntity("Pieprz", "g", "przyprawy")
                 )
                 initialSuggestions.forEach { dao.insertProductSuggestion(it) }
 

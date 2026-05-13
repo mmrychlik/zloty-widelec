@@ -111,7 +111,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 if (fridge) viewModel.clearFridge()
                 if (suggestions) viewModel.clearProductSuggestions()
                 if (recipes) viewModel.clearRecipes()
-                showClearDataDialog = false
             }
         )
     }
@@ -175,7 +174,10 @@ fun ClearDataDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(clearShopping, clearFridge, clearSuggestions, clearRecipes) },
+                onClick = { 
+                    onConfirm(clearShopping, clearFridge, clearSuggestions, clearRecipes)
+                    onDismiss()
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 enabled = clearShopping || clearFridge || clearSuggestions || clearRecipes
             ) {

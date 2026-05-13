@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.MoreVert
@@ -43,7 +42,7 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
     val filterTags by viewModel.filterTags.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
-    var filterHeaderWidth by remember { mutableStateOf(0) }
+    var filterHeaderWidth by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     var selectedItemForDetails by remember { mutableStateOf<IngredientEntity?>(null) }
 
@@ -59,7 +58,7 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
     )
 
     var showSortMenu by remember { mutableStateOf(false) }
-    var sortHeaderWidth by remember { mutableStateOf(0) }
+    var sortHeaderWidth by remember { mutableIntStateOf(0) }
 
     Scaffold(
         floatingActionButton = {
@@ -234,7 +233,6 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
             onDismiss = { showAddDialog = false },
             onConfirm = { name, amount, unit, tag ->
                 viewModel.addItem(name, amount, unit, tag)
-                showAddDialog = false
             }
         )
     }
@@ -782,6 +780,7 @@ fun AddFridgeItemDialog(
                             else -> selectedPrefix + selectedBaseUnit
                         }
                         onConfirm(trimmedName, amount, finalUnit, selectedTag)
+                        onDismiss()
                     }
                 },
                 enabled = name.isNotBlank(),

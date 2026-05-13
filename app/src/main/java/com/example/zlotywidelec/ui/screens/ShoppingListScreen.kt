@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,6 +31,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -47,7 +50,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     val filterTags by viewModel.filterTags.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
-    var filterHeaderWidth by remember { mutableStateOf(0) }
+    var filterHeaderWidth by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
 
     val tagOptions = listOf(
@@ -62,7 +65,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     )
 
     var showSortMenu by remember { mutableStateOf(false) }
-    var sortHeaderWidth by remember { mutableStateOf(0) }
+    var sortHeaderWidth by remember { mutableIntStateOf(0) }
     val hasCheckedItems = items.any { it.isChecked }
 
     Scaffold(
@@ -273,7 +276,6 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
             onDismiss = { showAddDialog = false },
             onConfirm = { name, amount, unit, tag ->
                 viewModel.addItem(name, amount, unit, tag)
-                showAddDialog = false
             }
         )
     }
@@ -311,7 +313,7 @@ fun ShoppingListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(
@@ -329,6 +331,13 @@ fun ShoppingListItem(
         Spacer(modifier = Modifier.width(8.dp))
         
         Column(modifier = Modifier.weight(1.0f)) {
+            Text(
+                text = item.name,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (item.isChecked) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onBackground,
+                textDecoration = if (item.isChecked) TextDecoration.LineThrough else null
+            )
             if (item.tag.isNotEmpty()) {
                 Text(
                     text = item.tag,
@@ -337,12 +346,6 @@ fun ShoppingListItem(
                     color = if (item.isChecked) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
                 )
             }
-            Text(
-                text = item.name,
-                fontSize = 18.sp,
-                color = if (item.isChecked) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onBackground,
-                textDecoration = if (item.isChecked) TextDecoration.LineThrough else null
-            )
             if (item.amount > 0) {
                 Text(
                     text = "${if (item.amount % 1.0 == 0.0) item.amount.toInt() else item.amount} ${item.unit}",
@@ -393,7 +396,6 @@ fun AddItemDialog(
         "sosy" to "Sosy"
     )
     var selectedTag by remember { mutableStateOf("") }
-    var expandedTagDropdown by remember { mutableStateOf(false) }
     
     val prefixOptions = listOf(
         "" to "—",
@@ -745,6 +747,7 @@ fun AddItemDialog(
                             else -> selectedPrefix + selectedBaseUnit
                         }
                         onConfirm(trimmedName, amount, finalUnit, selectedTag)
+                        onDismiss()
                     }
                 },
                 enabled = name.isNotBlank(),

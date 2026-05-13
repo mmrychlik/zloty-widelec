@@ -69,7 +69,6 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
     )
 
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.SHOPPING_LIST) }
-    var showMenu by remember { mutableStateOf(false) }
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
     
     val focusManager = LocalFocusManager.current
