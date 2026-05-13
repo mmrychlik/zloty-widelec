@@ -23,7 +23,17 @@ private val DarkColorScheme = darkColorScheme(
     onBackground = LightBeigeText,
     onSurface = LightBeigeText,
     surfaceVariant = MutedBrownAccent,
-    onSurfaceVariant = LightBeigeText
+    onSurfaceVariant = LightBeigeText,
+    primaryContainer = MutedBrownAccent,
+    onPrimaryContainer = LightBeigeText,
+    secondaryContainer = MutedBrownAccent,
+    onSecondaryContainer = LightBeigeText,
+    tertiaryContainer = MutedBrownAccent,
+    onTertiaryContainer = LightBeigeText,
+    surfaceContainer = DeepBrownBackground,
+    surfaceContainerHigh = MutedBrownAccent,
+    surfaceContainerHighest = MutedBrownAccent,
+    surfaceTint = Color.Transparent
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -38,7 +48,17 @@ private val LightColorScheme = lightColorScheme(
     onBackground = DarkText,
     onSurface = DarkText,
     surfaceVariant = BeigeAccent,
-    onSurfaceVariant = DarkText
+    onSurfaceVariant = DarkText,
+    primaryContainer = BeigeAccent,
+    onPrimaryContainer = DarkText,
+    secondaryContainer = BeigeAccent,
+    onSecondaryContainer = DarkText,
+    tertiaryContainer = BeigeAccent,
+    onTertiaryContainer = DarkText,
+    surfaceContainer = Color.White,
+    surfaceContainerHigh = BeigeAccent,
+    surfaceContainerHighest = BeigeAccent,
+    surfaceTint = Color.Transparent
 )
 
 @Composable

@@ -14,7 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Kitchen
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -197,30 +197,11 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                             }
                             
                             Box {
-                                IconButton(onClick = { showMenu = true }) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onBackground)
-                                }
-                                DropdownMenu(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false },
-                                    containerColor = MaterialTheme.colorScheme.surface
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Ustawienia", color = MaterialTheme.colorScheme.onSurface) },
-                                        onClick = {
-                                            showMenu = false
-                                            isSearchActive = false
-                                            currentDestination = AppDestinations.SETTINGS
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("O aplikacji", color = MaterialTheme.colorScheme.onSurface) },
-                                        onClick = {
-                                            showMenu = false
-                                            isSearchActive = false
-                                            currentDestination = AppDestinations.ABOUT
-                                        }
-                                    )
+                                IconButton(onClick = { 
+                                    isSearchActive = false
+                                    currentDestination = AppDestinations.SETTINGS 
+                                }) {
+                                    Icon(Icons.Default.Settings, contentDescription = "Ustawienia", tint = MaterialTheme.colorScheme.onBackground)
                                 }
                             }
                         },
@@ -248,7 +229,6 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                     AppDestinations.RECIPES -> RecipesScreen()
                     AppDestinations.CHEFS_RECIPES -> ChefsRecipesScreen()
                     AppDestinations.SETTINGS -> SettingsScreen(viewModel = settingsViewModel)
-                    AppDestinations.ABOUT -> AboutScreen()
                 }
             }
         }
@@ -265,6 +245,5 @@ enum class AppDestinations(
     MY_FRIDGE("Lodówka", Icons.Default.Kitchen, showSearch = true),
     RECIPES("Przepisy", Icons.AutoMirrored.Filled.MenuBook),
     CHEFS_RECIPES("Szef", Icons.Default.Restaurant),
-    SETTINGS("Ustawienia", Icons.Default.MoreVert, false),
-    ABOUT("O aplikacji", Icons.Default.MoreVert, false)
+    SETTINGS("Ustawienia", Icons.Default.Settings, false)
 }

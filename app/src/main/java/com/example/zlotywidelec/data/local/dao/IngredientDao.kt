@@ -25,10 +25,10 @@ interface IngredientDao {
     @Query("UPDATE ingredients SET isInFridge = 1, isChecked = 0, addedAt = :timestamp WHERE isChecked = 1 AND isInFridge = 0")
     suspend fun moveCheckedToFridge(timestamp: Long = System.currentTimeMillis())
 
-    @Query("SELECT DISTINCT name, unit FROM ingredients ORDER BY name ASC")
+    @Query("SELECT DISTINCT name, unit, tag FROM ingredients ORDER BY name ASC")
     fun getAllUniqueIngredients(): Flow<List<IngredientNameAndUnit>>
 
-    @Query("SELECT name, defaultUnit as unit FROM product_suggestions ORDER BY name ASC")
+    @Query("SELECT name, defaultUnit as unit, tag FROM product_suggestions ORDER BY name ASC")
     fun getAllProductSuggestions(): Flow<List<IngredientNameAndUnit>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -46,5 +46,6 @@ interface IngredientDao {
 
 data class IngredientNameAndUnit(
     val name: String,
-    val unit: String
+    val unit: String,
+    val tag: String = ""
 )

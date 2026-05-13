@@ -16,8 +16,12 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 enum class FridgeSortOrder {
-    ALPHABETICAL,
-    DATE_ADDED
+    NAME_ASC,
+    NAME_DESC,
+    DATE_ASC,
+    DATE_DESC,
+    CATEGORY_ASC,
+    CATEGORY_DESC
 }
 
 class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
@@ -25,8 +29,11 @@ class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
 
-    private val _sortOrder = MutableStateFlow(FridgeSortOrder.ALPHABETICAL)
+    private val _sortOrder = MutableStateFlow(FridgeSortOrder.DATE_DESC)
     val sortOrder: StateFlow<FridgeSortOrder> = _sortOrder
+
+    private val _filterTags = MutableStateFlow<Set<String>>(emptySet())
+    val filterTags: StateFlow<Set<String>> = _filterTags
 
     val suggestions: StateFlow<List<IngredientNameAndUnit>> = ingredientDao.getAllProductSuggestions()
         .stateIn(
@@ -38,17 +45,26 @@ class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
     val fridgeItems: StateFlow<List<IngredientEntity>> = combine(
         ingredientDao.getFridgeItems(),
         _searchQuery,
-        _sortOrder
-    ) { items, query, sortOrder ->
-        val filtered = if (query.isBlank()) {
+        _sortOrder,
+        _filterTags
+    ) { items, query, sortOrder, tags ->
+        var filtered = if (query.isBlank()) {
             items
         } else {
             items.filter { it.name.contains(query, ignoreCase = true) }
         }
 
+        if (tags.isNotEmpty()) {
+            filtered = filtered.filter { it.tag in tags }
+        }
+
         when (sortOrder) {
-            FridgeSortOrder.ALPHABETICAL -> filtered.sortedBy { it.name }
-            FridgeSortOrder.DATE_ADDED -> filtered.sortedByDescending { it.addedAt }
+            FridgeSortOrder.NAME_ASC -> filtered.sortedBy { it.name.lowercase() }
+            FridgeSortOrder.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase() }
+            FridgeSortOrder.DATE_ASC -> filtered.sortedBy { it.addedAt }
+            FridgeSortOrder.DATE_DESC -> filtered.sortedByDescending { it.addedAt }
+            FridgeSortOrder.CATEGORY_ASC -> filtered.sortedWith(compareBy({ it.tag.lowercase() }, { it.name.lowercase() }))
+            FridgeSortOrder.CATEGORY_DESC -> filtered.sortedWith(compareByDescending<IngredientEntity> { it.tag.lowercase() }.thenBy { it.name.lowercase() })
         }
     }
         .stateIn(
@@ -61,15 +77,29 @@ class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
         _searchQuery.value = query
     }
 
-    fun toggleSortOrder() {
-        _sortOrder.value = if (_sortOrder.value == FridgeSortOrder.ALPHABETICAL) {
-            FridgeSortOrder.DATE_ADDED
-        } else {
-            FridgeSortOrder.ALPHABETICAL
+    fun toggleSortOrder(type: String) {
+        _sortOrder.value = when (type) {
+            "NAME" -> if (_sortOrder.value == FridgeSortOrder.NAME_ASC) FridgeSortOrder.NAME_DESC else FridgeSortOrder.NAME_ASC
+            "DATE" -> if (_sortOrder.value == FridgeSortOrder.DATE_ASC) FridgeSortOrder.DATE_DESC else FridgeSortOrder.DATE_ASC
+            "CATEGORY" -> if (_sortOrder.value == FridgeSortOrder.CATEGORY_ASC) FridgeSortOrder.CATEGORY_DESC else FridgeSortOrder.CATEGORY_ASC
+            else -> _sortOrder.value
         }
     }
 
-    fun addItem(name: String, amount: Double, unit: String) {
+    fun toggleFilterTag(tag: String) {
+        val current = _filterTags.value
+        if (tag.isEmpty()) {
+            _filterTags.value = emptySet()
+        } else {
+            _filterTags.value = if (current.contains(tag)) {
+                current - tag
+            } else {
+                current + tag
+            }
+        }
+    }
+
+    fun addItem(name: String, amount: Double, unit: String, tag: String = "") {
         viewModelScope.launch {
             val capitalizedName = name.trim().replaceFirstChar {
                 if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
@@ -79,13 +109,14 @@ class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
                     name = capitalizedName,
                     amount = amount,
                     unit = unit,
+                    tag = tag,
                     isInFridge = true,
                     addedAt = System.currentTimeMillis()
                 )
             )
             // Also save as suggestion
             ingredientDao.insertProductSuggestion(
-                ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit)
+                ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit, tag = tag)
             )
         }
     }

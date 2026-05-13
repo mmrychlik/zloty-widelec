@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
         IngredientEntity::class,
         com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity::class
     ],
-    version = 10,
+    version = 12,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -67,26 +67,26 @@ abstract class AppDatabase : RoomDatabase() {
                 
                 // Initial Suggestions
                 val initialSuggestions = listOf(
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Mleko", "litr"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Chleb", "bochenek"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Jajka", "szt."),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Boczek", "g"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Mąka", "kg"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Cukier", "kg"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Masło", "szt."),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Woda", "l"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Sól", "g"),
-                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Pieprz", "g")
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Mleko", "litr", "nabiał"),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Chleb", "bochenek", "pieczywo"),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Jajka", "szt.", "nabiał"),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Boczek", "g", "mięso"),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Mąka", "kg", "zbożowe"),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Cukier", "kg", "przyprawy"),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Masło", "szt.", "nabiał"),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Woda", "l", ""),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Sól", "g", "przyprawy"),
+                    com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity("Pieprz", "g", "przyprawy")
                 )
                 initialSuggestions.forEach { dao.insertProductSuggestion(it) }
 
                 // Initial Shopping Items
-                dao.insertIngredient(IngredientEntity(name = "Mleko", amount = 1.0, unit = "litr"))
-                dao.insertIngredient(IngredientEntity(name = "Chleb", amount = 1.0, unit = "bochenek"))
+                dao.insertIngredient(IngredientEntity(name = "Mleko", amount = 1.0, unit = "litr", tag = "nabiał"))
+                dao.insertIngredient(IngredientEntity(name = "Chleb", amount = 1.0, unit = "bochenek", tag = "pieczywo"))
 
                 // Initial Fridge Items
-                dao.insertIngredient(IngredientEntity(name = "Jajka", amount = 10.0, unit = "szt", isInFridge = true))
-                dao.insertIngredient(IngredientEntity(name = "Boczek", amount = 200.0, unit = "g", isInFridge = true))
+                dao.insertIngredient(IngredientEntity(name = "Jajka", amount = 10.0, unit = "szt", tag = "nabiał", isInFridge = true))
+                dao.insertIngredient(IngredientEntity(name = "Boczek", amount = 200.0, unit = "g", tag = "mięso", isInFridge = true))
             }
         }
     }

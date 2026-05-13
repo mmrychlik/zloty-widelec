@@ -10,6 +10,7 @@ data class IngredientEntity(
     val name: String,
     val amount: Double,
     val unit: String = "",
+    val tag: String = "",
     val isChecked: Boolean = false,
     val isInFridge: Boolean = false,
     val addedAt: Long = System.currentTimeMillis()

@@ -1,11 +1,10 @@
 package com.example.zlotywidelec.data.local.entity
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 
-@Entity(tableName = "product_suggestions")
+@Entity(tableName = "product_suggestions", primaryKeys = ["name", "defaultUnit"])
 data class ProductSuggestionEntity(
-    @PrimaryKey
     val name: String,
-    val defaultUnit: String
+    val defaultUnit: String,
+    val tag: String = ""
 )
