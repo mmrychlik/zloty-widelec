@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
@@ -60,6 +61,10 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
         "zbożowe" to "Zbożowe",
         "mięso" to "Mięso",
         "nabiał" to "Nabiał",
+        "ryby" to "Ryby",
+        "mrożonki" to "Mrożonki",
+        "napoje" to "Napoje",
+        "słodycze" to "Słodycze",
         "przyprawy" to "Przyprawy",
         "sosy" to "Sosy"
     )
@@ -203,33 +208,54 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                         containerColor = MaterialTheme.colorScheme.surface,
                         modifier = Modifier.width(with(density) { filterHeaderWidth.toDp() })
                     ) {
-                        val isAllSelected = filterTags.isEmpty()
-                        DropdownMenuItem(
-                            text = {
-                                Text("Wszystkie")
-                            },
-                            onClick = {
-                                viewModel.toggleFilterTag("")
-                            },
-                            modifier = Modifier.background(
-                                if (isAllSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                                else Color.Transparent
-                            )
-                        )
-                        tagOptions.forEach { (tagValue, label) ->
-                            val isSelected = filterTags.contains(tagValue)
-                            DropdownMenuItem(
-                                text = {
-                                    Text(label)
-                                },
-                                onClick = {
-                                    viewModel.toggleFilterTag(tagValue)
-                                },
-                                modifier = Modifier.background(
-                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                                    else Color.Transparent
+                        val scrollState = rememberScrollState()
+                        Box(modifier = Modifier.requiredHeightIn(max = 380.dp)) {
+                            Column(modifier = Modifier.verticalScroll(scrollState)) {
+                                val isAllSelected = filterTags.isEmpty()
+                                DropdownMenuItem(
+                                    text = {
+                                        Text("Wszystkie")
+                                    },
+                                    onClick = {
+                                        viewModel.toggleFilterTag("")
+                                    },
+                                    modifier = Modifier.background(
+                                        if (isAllSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                        else Color.Transparent
+                                    )
                                 )
-                            )
+                                tagOptions.forEach { (tagValue, label) ->
+                                    val isSelected = filterTags.contains(tagValue)
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(label)
+                                        },
+                                        onClick = {
+                                            viewModel.toggleFilterTag(tagValue)
+                                        },
+                                        modifier = Modifier.background(
+                                            if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                            else Color.Transparent
+                                        )
+                                    )
+                                }
+                            }
+                            if (scrollState.canScrollBackward) {
+                                Text(
+                                    "^",
+                                    modifier = Modifier.align(Alignment.TopCenter),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            if (scrollState.canScrollForward) {
+                                Text(
+                                    "^",
+                                    modifier = Modifier.align(Alignment.BottomCenter).rotate(180f),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -388,10 +414,15 @@ fun AddItemDialog(
     
     val tagOptions = listOf(
         "warzywa" to "Warzywa",
+        "owoce" to "Owoce",
         "pieczywo" to "Pieczywo",
         "zbożowe" to "Zbożowe",
         "mięso" to "Mięso",
         "nabiał" to "Nabiał",
+        "ryby" to "Ryby",
+        "mrożonki" to "Mrożonki",
+        "napoje" to "Napoje",
+        "słodycze" to "Słodycze",
         "przyprawy" to "Przyprawy",
         "sosy" to "Sosy"
     )
