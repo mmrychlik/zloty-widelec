@@ -44,11 +44,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val settingsViewModel: SettingsViewModel = viewModel()
+            val context = LocalContext.current
+            val database = remember { AppDatabase.getDatabase(context) }
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = SettingsViewModelFactory(database.ingredientDao())
+            )
             val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
             
             ZlotyWidelecTheme(darkTheme = isDarkMode) {
-                ZlotyWidelecApp(settingsViewModel)
+                ZlotyWidelecApp(settingsViewModel, database)
             }
         }
     }
@@ -56,9 +60,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel) {
-    val context = LocalContext.current
-    val database = remember { AppDatabase.getDatabase(context) }
+fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase) {
     val shoppingViewModel: ShoppingViewModel = viewModel(
         factory = ShoppingViewModelFactory(database.ingredientDao())
     )
@@ -260,8 +262,8 @@ enum class AppDestinations(
     val showSearch: Boolean = false
 ) {
     SHOPPING_LIST("Lista", Icons.AutoMirrored.Filled.List, showSearch = true),
-    RECIPES("Przepisy", Icons.AutoMirrored.Filled.MenuBook),
     MY_FRIDGE("Lodówka", Icons.Default.Kitchen, showSearch = true),
+    RECIPES("Przepisy", Icons.AutoMirrored.Filled.MenuBook),
     CHEFS_RECIPES("Szef", Icons.Default.Restaurant),
     SETTINGS("Ustawienia", Icons.Default.MoreVert, false),
     ABOUT("O aplikacji", Icons.Default.MoreVert, false)

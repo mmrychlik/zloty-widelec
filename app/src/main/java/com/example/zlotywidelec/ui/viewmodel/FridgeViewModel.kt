@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.zlotywidelec.data.local.dao.IngredientDao
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
+import com.example.zlotywidelec.data.local.dao.IngredientNameAndUnit
+import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,13 @@ class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
 
     private val _sortOrder = MutableStateFlow(FridgeSortOrder.ALPHABETICAL)
     val sortOrder: StateFlow<FridgeSortOrder> = _sortOrder
+
+    val suggestions: StateFlow<List<IngredientNameAndUnit>> = ingredientDao.getAllProductSuggestions()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     val fridgeItems: StateFlow<List<IngredientEntity>> = combine(
         ingredientDao.getFridgeItems(),
@@ -73,6 +82,10 @@ class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
                     isInFridge = true,
                     addedAt = System.currentTimeMillis()
                 )
+            )
+            // Also save as suggestion
+            ingredientDao.insertProductSuggestion(
+                ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit)
             )
         }
     }

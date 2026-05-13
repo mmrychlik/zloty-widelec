@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.zlotywidelec.data.local.dao.IngredientDao
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
+import com.example.zlotywidelec.data.local.dao.IngredientNameAndUnit
+import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +19,13 @@ class ShoppingViewModel(private val ingredientDao: IngredientDao) : ViewModel() 
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
+
+    val suggestions: StateFlow<List<IngredientNameAndUnit>> = ingredientDao.getAllProductSuggestions()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     val shoppingItems: StateFlow<List<IngredientEntity>> = ingredientDao.getShoppingListItems()
         .combine(_searchQuery) { items, query ->
@@ -43,6 +52,10 @@ class ShoppingViewModel(private val ingredientDao: IngredientDao) : ViewModel() 
             }
             ingredientDao.insertIngredient(
                 IngredientEntity(name = capitalizedName, amount = amount, unit = unit)
+            )
+            // Also save as suggestion
+            ingredientDao.insertProductSuggestion(
+                ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit)
             )
         }
     }

@@ -2,6 +2,7 @@ package com.example.zlotywidelec.data.local.dao
 
 import androidx.room.*
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
+import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -23,4 +24,27 @@ interface IngredientDao {
 
     @Query("UPDATE ingredients SET isInFridge = 1, isChecked = 0, addedAt = :timestamp WHERE isChecked = 1 AND isInFridge = 0")
     suspend fun moveCheckedToFridge(timestamp: Long = System.currentTimeMillis())
+
+    @Query("SELECT DISTINCT name, unit FROM ingredients ORDER BY name ASC")
+    fun getAllUniqueIngredients(): Flow<List<IngredientNameAndUnit>>
+
+    @Query("SELECT name, defaultUnit as unit FROM product_suggestions ORDER BY name ASC")
+    fun getAllProductSuggestions(): Flow<List<IngredientNameAndUnit>>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertProductSuggestion(suggestion: ProductSuggestionEntity)
+
+    @Query("DELETE FROM product_suggestions")
+    suspend fun deleteAllProductSuggestions()
+
+    @Query("DELETE FROM ingredients WHERE isInFridge = 0")
+    suspend fun deleteAllShoppingItems()
+
+    @Query("DELETE FROM ingredients WHERE isInFridge = 1")
+    suspend fun deleteAllFridgeItems()
 }
+
+data class IngredientNameAndUnit(
+    val name: String,
+    val unit: String
+)
