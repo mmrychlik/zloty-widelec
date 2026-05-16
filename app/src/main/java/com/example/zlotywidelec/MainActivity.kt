@@ -1,5 +1,7 @@
 package com.example.zlotywidelec
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +16,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Kitchen
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
@@ -34,6 +38,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.zlotywidelec.data.io.DataBackupManager
 import com.example.zlotywidelec.data.local.AppDatabase
 import com.example.zlotywidelec.ui.screens.*
 import com.example.zlotywidelec.ui.theme.*
@@ -46,13 +51,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             val database = remember { AppDatabase.getDatabase(context) }
+            val backupManager = remember { DataBackupManager(context, database.ingredientDao(), database.recipeDao()) }
             val settingsViewModel: SettingsViewModel = viewModel(
-                factory = SettingsViewModelFactory(database.ingredientDao())
+                factory = SettingsViewModelFactory(database.ingredientDao(), database.recipeDao(), backupManager)
             )
             val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
             
             ZlotyWidelecTheme(darkTheme = isDarkMode) {
-                ZlotyWidelecApp(settingsViewModel, database)
+                ZlotyWidelecApp(settingsViewModel, database, backupManager)
             }
         }
     }
@@ -60,7 +66,35 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase) {
+fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase, backupManager: DataBackupManager) {
+    val photoStorageUri by settingsViewModel.photoStorageUri.collectAsState()
+    var showFolderPrompt by remember { mutableStateOf(false) }
+
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let { settingsViewModel.setPhotoStorageUri(it) }
+    }
+
+    LaunchedEffect(photoStorageUri) {
+        if (photoStorageUri == null) {
+            showFolderPrompt = true
+        }
+    }
+
+    if (showFolderPrompt && photoStorageUri == null) {
+        AlertDialog(
+            onDismissRequest = { /* Mandatory */ },
+            title = { Text("Konfiguracja folderu zdjęć") },
+            text = { Text("Wybierz folder, w którym będą przechowywane zdjęcia Twoich przepisów. Jest to wymagane do poprawnego działania kopii zapasowej.") },
+            confirmButton = {
+                Button(onClick = { folderPickerLauncher.launch(null) }) {
+                    Text("Wybierz folder")
+                }
+            }
+        )
+    }
+
     val shoppingViewModel: ShoppingViewModel = viewModel(
         factory = ShoppingViewModelFactory(database.ingredientDao())
     )
@@ -68,7 +102,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
         factory = FridgeViewModelFactory(database.ingredientDao())
     )
     val recipeViewModel: RecipeViewModel = viewModel(
-        factory = RecipeViewModelFactory(database.ingredientDao(), database.recipeDao())
+        factory = RecipeViewModelFactory(database.ingredientDao(), database.recipeDao(), backupManager)
     )
 
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.SHOPPING_LIST) }
@@ -148,7 +182,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                                 val searchQuery = when (currentDestination) {
                                     AppDestinations.SHOPPING_LIST -> shoppingViewModel.searchQuery.collectAsState().value
                                     AppDestinations.MY_FRIDGE -> fridgeViewModel.searchQuery.collectAsState().value
-                                    AppDestinations.RECIPES, AppDestinations.CHEFS_RECIPES -> recipeViewModel.searchQuery.collectAsState().value
+                                    AppDestinations.RECIPES, AppDestinations.FRIENDS_RECIPES -> recipeViewModel.searchQuery.collectAsState().value
                                     else -> ""
                                 }
                                 
@@ -164,7 +198,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                                             when (currentDestination) {
                                                 AppDestinations.SHOPPING_LIST -> shoppingViewModel.setSearchQuery(it)
                                                 AppDestinations.MY_FRIDGE -> fridgeViewModel.setSearchQuery(it)
-                                                AppDestinations.RECIPES, AppDestinations.CHEFS_RECIPES -> recipeViewModel.setSearchQuery(it)
+                                                AppDestinations.RECIPES, AppDestinations.FRIENDS_RECIPES -> recipeViewModel.setSearchQuery(it)
                                                 else -> {}
                                             }
                                         },
@@ -233,7 +267,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                     AppDestinations.SHOPPING_LIST -> ShoppingListScreen(viewModel = shoppingViewModel)
                     AppDestinations.MY_FRIDGE -> MyFridgeScreen(viewModel = fridgeViewModel)
                     AppDestinations.RECIPES -> RecipesScreen(viewModel = recipeViewModel)
-                    AppDestinations.CHEFS_RECIPES -> ChefsRecipesScreen(viewModel = recipeViewModel)
+                    AppDestinations.FRIENDS_RECIPES -> FriendsRecipesScreen(viewModel = recipeViewModel)
                     AppDestinations.SETTINGS -> SettingsScreen(viewModel = settingsViewModel)
                 }
             }
@@ -250,6 +284,6 @@ enum class AppDestinations(
     SHOPPING_LIST("Lista", Icons.AutoMirrored.Filled.List, showSearch = true),
     MY_FRIDGE("Lodówka", Icons.Default.Kitchen, showSearch = true),
     RECIPES("Przepisy", Icons.AutoMirrored.Filled.MenuBook, showSearch = true),
-    CHEFS_RECIPES("Szef", Icons.Default.Restaurant, showSearch = true),
+    FRIENDS_RECIPES("Znajomi", Icons.Default.People, showSearch = true),
     SETTINGS("Ustawienia", Icons.Default.Settings, false)
 }

@@ -1,5 +1,6 @@
 package com.example.zlotywidelec.ui.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -13,12 +14,13 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 enum class RecipeSortOrder {
-    NAME_ASC, NAME_DESC, DATE_ASC, DATE_DESC, AVAILABILITY_DESC
+    NAME_ASC, NAME_DESC, DATE_ASC, DATE_DESC, AVAILABILITY_ASC, AVAILABILITY_DESC
 }
 
 class RecipeViewModel(
     private val ingredientDao: IngredientDao,
-    private val recipeDao: RecipeDao
+    private val recipeDao: RecipeDao,
+    private val backupManager: com.example.zlotywidelec.data.io.DataBackupManager
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -55,8 +57,8 @@ class RecipeViewModel(
         filterAndSortRecipes(recipes, query, sort, tags, fridge)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val filteredChefRecipes = combine(
-        recipeDao.getChefRecipes(),
+    val filteredFriendsRecipes = combine(
+        recipeDao.getFriendsRecipes(),
         _searchQuery,
         _sortOrder,
         _filterTags,
@@ -83,7 +85,7 @@ class RecipeViewModel(
         _sortOrder.value = when (type) {
             "NAME" -> if (_sortOrder.value == RecipeSortOrder.NAME_ASC) RecipeSortOrder.NAME_DESC else RecipeSortOrder.NAME_ASC
             "DATE" -> if (_sortOrder.value == RecipeSortOrder.DATE_ASC) RecipeSortOrder.DATE_DESC else RecipeSortOrder.DATE_ASC
-            "AVAILABILITY" -> RecipeSortOrder.AVAILABILITY_DESC
+            "AVAILABILITY" -> if (_sortOrder.value == RecipeSortOrder.AVAILABILITY_DESC) RecipeSortOrder.AVAILABILITY_ASC else RecipeSortOrder.AVAILABILITY_DESC
             else -> _sortOrder.value
         }
     }
@@ -103,10 +105,15 @@ class RecipeViewModel(
 
     fun addRecipe(name: String, instructions: String, imageUrl: String, tag: String, ingredients: List<Triple<String, Double, String>>) {
         viewModelScope.launch {
+            val finalImageUrl = if (imageUrl.startsWith("content://")) {
+                backupManager.copyImageToInternalStorage(Uri.parse(imageUrl))?.toString() ?: imageUrl
+            } else {
+                imageUrl
+            }
             val recipe = RecipeEntity(
                 name = name,
                 instructions = instructions,
-                imageUrl = imageUrl,
+                imageUrl = finalImageUrl,
                 tag = tag,
                 isUserCreated = true
             )
@@ -130,6 +137,12 @@ class RecipeViewModel(
 
     fun updateRecipe(recipe: RecipeEntity, ingredients: List<Triple<String, Double, String>>) {
         viewModelScope.launch {
+            val finalImageUrl = if (recipe.imageUrl.startsWith("content://")) {
+                backupManager.copyImageToInternalStorage(Uri.parse(recipe.imageUrl))?.toString() ?: recipe.imageUrl
+            } else {
+                recipe.imageUrl
+            }
+            val updatedRecipe = recipe.copy(imageUrl = finalImageUrl)
             val ingredientEntities = ingredients.map { (iName, amount, iUnit) ->
                 RecipeIngredientEntity(
                     recipeId = recipe.id,
@@ -138,7 +151,7 @@ class RecipeViewModel(
                     unit = iUnit
                 )
             }
-            recipeDao.updateRecipeWithIngredients(recipe, ingredientEntities)
+            recipeDao.updateRecipeWithIngredients(updatedRecipe, ingredientEntities)
         }
     }
 
@@ -164,6 +177,7 @@ class RecipeViewModel(
             RecipeSortOrder.NAME_DESC -> filtered.sortedByDescending { it.recipe.name }
             RecipeSortOrder.DATE_ASC -> filtered.sortedBy { it.recipe.addedAt }
             RecipeSortOrder.DATE_DESC -> filtered.sortedByDescending { it.recipe.addedAt }
+            RecipeSortOrder.AVAILABILITY_ASC -> filtered.sortedBy { calculateAvailability(it, fridge) }
             RecipeSortOrder.AVAILABILITY_DESC -> filtered.sortedByDescending { calculateAvailability(it, fridge) }
         }
     }
@@ -217,12 +231,13 @@ class RecipeViewModel(
 
 class RecipeViewModelFactory(
     private val ingredientDao: IngredientDao,
-    private val recipeDao: RecipeDao
+    private val recipeDao: RecipeDao,
+    private val backupManager: com.example.zlotywidelec.data.io.DataBackupManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(RecipeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return RecipeViewModel(ingredientDao, recipeDao) as T
+            return RecipeViewModel(ingredientDao, recipeDao, backupManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

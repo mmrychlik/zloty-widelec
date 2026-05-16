@@ -26,7 +26,7 @@ interface RecipeDao {
 
     @Transaction
     @Query("SELECT * FROM recipes WHERE isUserCreated = 0 ORDER BY name ASC")
-    fun getChefRecipes(): Flow<List<RecipeWithIngredients>>
+    fun getFriendsRecipes(): Flow<List<RecipeWithIngredients>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecipe(recipe: RecipeEntity): Long
@@ -44,8 +44,15 @@ interface RecipeDao {
     @Delete
     suspend fun deleteRecipe(recipe: RecipeEntity)
 
+    @Query("DELETE FROM recipes WHERE isUserCreated = 1")
+    suspend fun deleteAllUserRecipes()
+
     @Query("DELETE FROM recipe_ingredients WHERE recipeId = :recipeId")
     suspend fun deleteIngredientsByRecipeId(recipeId: Long)
+
+    @Transaction
+    @Query("SELECT * FROM recipes WHERE isUserCreated = 1")
+    suspend fun getAllUserRecipesSync(): List<RecipeWithIngredients>
 
     @Transaction
     suspend fun updateRecipeWithIngredients(recipe: RecipeEntity, ingredients: List<RecipeIngredientEntity>) {

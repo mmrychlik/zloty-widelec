@@ -2,7 +2,9 @@ package com.example.zlotywidelec.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
+@Serializable
 @Entity(tableName = "ingredients")
 data class IngredientEntity(
     @PrimaryKey(autoGenerate = true)

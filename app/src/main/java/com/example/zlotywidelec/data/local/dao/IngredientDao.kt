@@ -42,6 +42,15 @@ interface IngredientDao {
 
     @Query("DELETE FROM ingredients WHERE isInFridge = 1")
     suspend fun deleteAllFridgeItems()
+
+    @Query("SELECT * FROM ingredients WHERE isInFridge = 0")
+    suspend fun getAllShoppingItemsSync(): List<IngredientEntity>
+
+    @Query("SELECT * FROM ingredients WHERE isInFridge = 1")
+    suspend fun getAllFridgeItemsSync(): List<IngredientEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIngredients(ingredients: List<IngredientEntity>)
 }
 
 data class IngredientNameAndUnit(

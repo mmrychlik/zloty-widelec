@@ -1,5 +1,7 @@
 package com.example.zlotywidelec.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -46,61 +48,165 @@ fun AboutSection() {
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel) {
     val isDarkMode by viewModel.isDarkMode.collectAsState()
+    val message by viewModel.message.collectAsState()
+    val photoStorageUri by viewModel.photoStorageUri.collectAsState()
     var showClearDataDialog by remember { mutableStateOf(false) }
+    var showExportDataDialog by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Tryb ciemny",
-                fontSize = 18.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Switch(
-                checked = isDarkMode,
-                onCheckedChange = { viewModel.toggleDarkMode(it) },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.secondary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    checkedBorderColor = Color.Transparent,
-                    uncheckedBorderColor = Color.Transparent
-                )
-            )
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(message) {
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessage()
         }
+    }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let { viewModel.setPhotoStorageUri(it) }
+    }
 
-        TextButton(
-            onClick = { showClearDataDialog = true },
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(0.dp)
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        uri?.let { viewModel.handleExportUri(it) }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importData(it) }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Wyczyść dane",
+                    text = "Tryb ciemny",
                     fontSize = 18.sp,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Switch(
+                    checked = isDarkMode,
+                    onCheckedChange = { viewModel.toggleDarkMode(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.secondary,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        checkedBorderColor = Color.Transparent,
+                        uncheckedBorderColor = Color.Transparent
+                    )
                 )
             }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Folder na zdjęcia przepisów",
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = photoStorageUri?.let { "Ustawiono" } ?: "Nie ustawiono",
+                    fontSize = 14.sp,
+                    color = if (photoStorageUri != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                )
+                Button(
+                    onClick = { folderPickerLauncher.launch(null) },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text(if (photoStorageUri == null) "Wybierz folder" else "Zmień folder")
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+
+            TextButton(
+                onClick = { showExportDataDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Text(
+                        text = "Eksportuj dane (.zip)",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            TextButton(
+                onClick = { importLauncher.launch(arrayOf("application/zip")) },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Text(
+                        text = "Importuj dane (.zip)",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            TextButton(
+                onClick = { showClearDataDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Start
+                ) {
+                    Text(
+                        text = "Wyczyść dane",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            AboutSection()
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
+    }
 
-        AboutSection()
+    if (showExportDataDialog) {
+        ExportDataDialog(
+            onDismiss = { showExportDataDialog = false },
+            onConfirm = { shopping, fridge, recipes ->
+                exportLauncher.launch("zloty_widelec_backup.json")
+                viewModel.exportDataAfterSelection(shopping, fridge, recipes)
+            }
+        )
     }
 
     if (showClearDataDialog) {
@@ -114,6 +220,71 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
             }
         )
     }
+}
+
+@Composable
+fun ExportDataDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (Boolean, Boolean, Boolean) -> Unit
+) {
+    var exportShopping by remember { mutableStateOf(true) }
+    var exportFridge by remember { mutableStateOf(true) }
+    var exportRecipes by remember { mutableStateOf(true) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Co chcesz wyeksportować?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { exportShopping = !exportShopping }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Checkbox(checked = exportShopping, onCheckedChange = { exportShopping = it })
+                    Text("Lista zakupów", modifier = Modifier.padding(start = 8.dp))
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { exportFridge = !exportFridge }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Checkbox(checked = exportFridge, onCheckedChange = { exportFridge = it })
+                    Text("Lodówka", modifier = Modifier.padding(start = 8.dp))
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { exportRecipes = !exportRecipes }
+                        .padding(vertical = 4.dp)
+                ) {
+                    Checkbox(checked = exportRecipes, onCheckedChange = { exportRecipes = it })
+                    Text("Własne przepisy", modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(exportShopping, exportFridge, exportRecipes)
+                    onDismiss()
+                },
+                enabled = exportShopping || exportFridge || exportRecipes
+            ) {
+                Text("Eksportuj")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Anuluj")
+            }
+        }
+    )
 }
 
 @Composable
@@ -162,13 +333,14 @@ fun ClearDataDialog(
                     Text("Podpowiedzi produktów", modifier = Modifier.padding(start = 8.dp))
                 }
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.CenterVertically, 
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clickable { clearRecipes = !clearRecipes }
                         .padding(vertical = 4.dp)
                 ) {
-                    Checkbox(checked = clearRecipes, onCheckedChange = null, enabled = false)
-                    Text("Przepisy (wkrótce)", modifier = Modifier.padding(start = 8.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Checkbox(checked = clearRecipes, onCheckedChange = { clearRecipes = it })
+                    Text("Własne przepisy", modifier = Modifier.padding(start = 8.dp))
                 }
             }
         },

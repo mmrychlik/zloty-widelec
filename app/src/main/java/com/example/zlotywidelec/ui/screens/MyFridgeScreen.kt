@@ -233,7 +233,9 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
                             if (scrollState.canScrollForward) {
                                 Text(
                                     "^",
-                                    modifier = Modifier.align(Alignment.BottomCenter).rotate(180f),
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .rotate(180f),
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.Bold
                                 )

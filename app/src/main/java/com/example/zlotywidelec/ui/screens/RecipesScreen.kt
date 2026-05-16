@@ -26,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -51,10 +52,7 @@ fun RecipesScreen(viewModel: RecipeViewModel) {
     var showAddDialog by remember { mutableStateOf(false) }
     var recipeToEdit by remember { mutableStateOf<RecipeWithIngredients?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
-    var sortHeaderWidth by remember { mutableIntStateOf(0) }
     var showFilterMenu by remember { mutableStateOf(false) }
-    var filterHeaderWidth by remember { mutableIntStateOf(0) }
-    val density = LocalDensity.current
 
     val recipeTagOptions = listOf(
         "obiad" to "Obiad",
@@ -92,7 +90,6 @@ fun RecipesScreen(viewModel: RecipeViewModel) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .onSizeChanged { sortHeaderWidth = it.width }
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { showSortMenu = true }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -105,20 +102,37 @@ fun RecipesScreen(viewModel: RecipeViewModel) {
                         expanded = showSortMenu,
                         onDismissRequest = { showSortMenu = false },
                         containerColor = MaterialTheme.colorScheme.surface,
-                        modifier = Modifier.width(with(density) { sortHeaderWidth.toDp() })
+                        modifier = Modifier.widthIn(min = 160.dp)
                     ) {
                         listOf("DATE" to "Data", "NAME" to "Nazwa", "AVAILABILITY" to "Dostępność").forEach { (type, label) ->
                              val isSelected = when(type) {
                                 "NAME" -> sortOrder == RecipeSortOrder.NAME_ASC || sortOrder == RecipeSortOrder.NAME_DESC
                                 "DATE" -> sortOrder == RecipeSortOrder.DATE_ASC || sortOrder == RecipeSortOrder.DATE_DESC
-                                "AVAILABILITY" -> sortOrder == RecipeSortOrder.AVAILABILITY_DESC
+                                "AVAILABILITY" -> sortOrder == RecipeSortOrder.AVAILABILITY_ASC || sortOrder == RecipeSortOrder.AVAILABILITY_DESC
                                 else -> false
                             }
+                            val arrow = when(type) {
+                                "DATE" -> when(sortOrder) {
+                                    RecipeSortOrder.DATE_ASC -> " ↗"
+                                    RecipeSortOrder.DATE_DESC -> " ↘"
+                                    else -> ""
+                                }
+                                "NAME" -> when(sortOrder) {
+                                    RecipeSortOrder.NAME_ASC -> " ↗"
+                                    RecipeSortOrder.NAME_DESC -> " ↘"
+                                    else -> ""
+                                }
+                                "AVAILABILITY" -> when(sortOrder) {
+                                    RecipeSortOrder.AVAILABILITY_ASC -> " ↗"
+                                    RecipeSortOrder.AVAILABILITY_DESC -> " ↘"
+                                    else -> ""
+                                }
+                                else -> ""
+                            }
                             DropdownMenuItem(
-                                text = { Text(label) },
+                                text = { Text(label + arrow) },
                                 onClick = {
                                     viewModel.toggleSortOrder(type)
-                                    showSortMenu = false
                                 },
                                 modifier = Modifier.background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
                             )
@@ -133,7 +147,6 @@ fun RecipesScreen(viewModel: RecipeViewModel) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .onSizeChanged { filterHeaderWidth = it.width }
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { showFilterMenu = true }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -146,19 +159,42 @@ fun RecipesScreen(viewModel: RecipeViewModel) {
                         expanded = showFilterMenu,
                         onDismissRequest = { showFilterMenu = false },
                         containerColor = MaterialTheme.colorScheme.surface,
-                        modifier = Modifier.width(with(density) { filterHeaderWidth.toDp() })
+                        modifier = Modifier.widthIn(min = 160.dp)
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("Wszystkie") },
-                            onClick = { viewModel.toggleFilterTag(""); showFilterMenu = false },
-                            modifier = Modifier.background(if (filterTags.isEmpty()) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
-                        )
-                        recipeTagOptions.forEach { (tag, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label) },
-                                onClick = { viewModel.toggleFilterTag(tag); showFilterMenu = false },
-                                modifier = Modifier.background(if (filterTags.contains(tag)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
-                            )
+                        val scrollState = rememberScrollState()
+                        Box(modifier = Modifier.requiredHeightIn(max = 380.dp)) {
+                            Column(modifier = Modifier.verticalScroll(scrollState)) {
+                                DropdownMenuItem(
+                                    text = { Text("Wszystkie") },
+                                    onClick = { viewModel.toggleFilterTag("") },
+                                    modifier = Modifier.background(if (filterTags.isEmpty()) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
+                                )
+                                recipeTagOptions.forEach { (tag, label) ->
+                                    DropdownMenuItem(
+                                        text = { Text(label) },
+                                        onClick = { viewModel.toggleFilterTag(tag) },
+                                        modifier = Modifier.background(if (filterTags.contains(tag)) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
+                                    )
+                                }
+                            }
+                            if (scrollState.canScrollBackward) {
+                                Text(
+                                    "^",
+                                    modifier = Modifier.align(Alignment.TopCenter),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            if (scrollState.canScrollForward) {
+                                Text(
+                                    "^",
+                                    modifier = Modifier
+                                        .align(Alignment.BottomCenter)
+                                        .rotate(180f),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
@@ -430,7 +466,7 @@ fun AddRecipeDialog(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(modifier = Modifier.weight(1.5f)) {
+                                Box(modifier = Modifier.weight(1f)) {
                                     ExposedDropdownMenuBox(
                                         expanded = expandedNameSuggestions,
                                         onExpandedChange = { expandedNameSuggestions = it }
@@ -467,17 +503,33 @@ fun AddRecipeDialog(
                                         }
                                     }
                                 }
+                                if (ingredients.size > 1) {
+                                    IconButton(onClick = { ingredients.removeAt(index) }) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Usuń",
+                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 TextField(
                                     value = iAmount,
                                     onValueChange = { ingredients[index] = Triple(iName, it, iUnit) },
                                     placeholder = { Text("Ilość", fontSize = 14.sp) },
-                                    modifier = Modifier.width(60.dp),
+                                    modifier = Modifier.width(100.dp),
                                     colors = textFieldColors,
                                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                         keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal
                                     )
                                 )
-                                Box(modifier = Modifier.width(70.dp)) {
+                                Box(modifier = Modifier.weight(1f)) {
                                     ExposedDropdownMenuBox(
                                         expanded = expandedUnitSuggestions,
                                         onExpandedChange = { expandedUnitSuggestions = it }
@@ -512,16 +564,6 @@ fun AddRecipeDialog(
                                                 }
                                             }
                                         }
-                                    }
-                                }
-                                if (ingredients.size > 1) {
-                                    IconButton(onClick = { ingredients.removeAt(index) }) {
-                                        Icon(
-                                            Icons.Default.Delete,
-                                            contentDescription = "Usuń",
-                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                                            modifier = Modifier.size(20.dp)
-                                        )
                                     }
                                 }
                             }
