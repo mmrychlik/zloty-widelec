@@ -67,6 +67,9 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
     val fridgeViewModel: FridgeViewModel = viewModel(
         factory = FridgeViewModelFactory(database.ingredientDao())
     )
+    val recipeViewModel: RecipeViewModel = viewModel(
+        factory = RecipeViewModelFactory(database.ingredientDao(), database.recipeDao())
+    )
 
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.SHOPPING_LIST) }
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
@@ -107,6 +110,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                         isSearchActive = false
                         shoppingViewModel.setSearchQuery("")
                         fridgeViewModel.setSearchQuery("")
+                        recipeViewModel.setSearchQuery("")
                     },
                     colors = navSuiteItemColors
                 )
@@ -129,6 +133,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                                     isSearchActive = false
                                     shoppingViewModel.setSearchQuery("")
                                     fridgeViewModel.setSearchQuery("")
+                                    recipeViewModel.setSearchQuery("")
                                 }) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -143,6 +148,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                                 val searchQuery = when (currentDestination) {
                                     AppDestinations.SHOPPING_LIST -> shoppingViewModel.searchQuery.collectAsState().value
                                     AppDestinations.MY_FRIDGE -> fridgeViewModel.searchQuery.collectAsState().value
+                                    AppDestinations.RECIPES, AppDestinations.CHEFS_RECIPES -> recipeViewModel.searchQuery.collectAsState().value
                                     else -> ""
                                 }
                                 
@@ -158,6 +164,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                                             when (currentDestination) {
                                                 AppDestinations.SHOPPING_LIST -> shoppingViewModel.setSearchQuery(it)
                                                 AppDestinations.MY_FRIDGE -> fridgeViewModel.setSearchQuery(it)
+                                                AppDestinations.RECIPES, AppDestinations.CHEFS_RECIPES -> recipeViewModel.setSearchQuery(it)
                                                 else -> {}
                                             }
                                         },
@@ -225,8 +232,8 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase)
                 when (currentDestination) {
                     AppDestinations.SHOPPING_LIST -> ShoppingListScreen(viewModel = shoppingViewModel)
                     AppDestinations.MY_FRIDGE -> MyFridgeScreen(viewModel = fridgeViewModel)
-                    AppDestinations.RECIPES -> RecipesScreen()
-                    AppDestinations.CHEFS_RECIPES -> ChefsRecipesScreen()
+                    AppDestinations.RECIPES -> RecipesScreen(viewModel = recipeViewModel)
+                    AppDestinations.CHEFS_RECIPES -> ChefsRecipesScreen(viewModel = recipeViewModel)
                     AppDestinations.SETTINGS -> SettingsScreen(viewModel = settingsViewModel)
                 }
             }
@@ -242,7 +249,7 @@ enum class AppDestinations(
 ) {
     SHOPPING_LIST("Lista", Icons.AutoMirrored.Filled.List, showSearch = true),
     MY_FRIDGE("Lodówka", Icons.Default.Kitchen, showSearch = true),
-    RECIPES("Przepisy", Icons.AutoMirrored.Filled.MenuBook),
-    CHEFS_RECIPES("Szef", Icons.Default.Restaurant),
+    RECIPES("Przepisy", Icons.AutoMirrored.Filled.MenuBook, showSearch = true),
+    CHEFS_RECIPES("Szef", Icons.Default.Restaurant, showSearch = true),
     SETTINGS("Ustawienia", Icons.Default.Settings, false)
 }
