@@ -39,10 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.canhub.cropper.CropImageContract
-import com.canhub.cropper.CropImageContractOptions
-import com.canhub.cropper.CropImageOptions
-import com.canhub.cropper.CropImageView
 import com.example.zlotywidelec.data.local.dao.IngredientNameAndUnit
 import com.example.zlotywidelec.data.local.dao.RecipeWithIngredients
 import com.example.zlotywidelec.ui.viewmodel.RecipeSortOrder
@@ -320,28 +316,11 @@ fun AddRecipeDialog(
 
     val context = LocalContext.current
     
-    val cropLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
-        if (result.isSuccessful) {
-            imageUri = result.uriContent
-        }
-    }
-
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
             if (uri != null) {
-                cropLauncher.launch(
-                    CropImageContractOptions(
-                        uri = uri,
-                        cropImageOptions = CropImageOptions(
-                            guidelines = CropImageView.Guidelines.ON,
-                            aspectRatioX = 16,
-                            aspectRatioY = 9,
-                            fixAspectRatio = true,
-                            skipEditing = false
-                        )
-                    )
-                )
+                imageUri = uri
             }
         }
     )

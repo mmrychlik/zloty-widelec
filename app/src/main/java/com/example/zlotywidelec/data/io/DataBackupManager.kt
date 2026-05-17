@@ -34,7 +34,7 @@ data class RecipeWithIngredientsBackup(
 )
 
 class DataBackupManager(
-    private val context: Context,
+    val context: Context,
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao
 ) {

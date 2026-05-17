@@ -163,6 +163,16 @@ class RecipeViewModel(
             
             // Auto-sync after adding
             try {
+                // 1. Upload image if it's local
+                if (finalImageUrl.startsWith("content://")) {
+                    val uri = Uri.parse(finalImageUrl)
+                    val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "img_${recipe.uuid}.jpg"
+                    backupManager.context.contentResolver.openInputStream(uri)?.use { input ->
+                        syncManager.uploadImage(fileName, input.readBytes())
+                    }
+                }
+
+                // 2. Upload recipe list
                 val allUserRecipes = recipeDao.getAllUserRecipesSync()
                 syncManager.uploadCategoryData(
                     com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
@@ -216,6 +226,16 @@ class RecipeViewModel(
 
             // Auto-sync after updating
             try {
+                // 1. Upload image if it's local
+                if (finalImageUrl.startsWith("content://")) {
+                    val uri = Uri.parse(finalImageUrl)
+                    val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "img_${updatedRecipe.uuid}.jpg"
+                    backupManager.context.contentResolver.openInputStream(uri)?.use { input ->
+                        syncManager.uploadImage(fileName, input.readBytes())
+                    }
+                }
+
+                // 2. Upload recipe list
                 val allUserRecipes = recipeDao.getAllUserRecipesSync()
                 syncManager.uploadCategoryData(
                     com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
