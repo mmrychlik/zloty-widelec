@@ -109,6 +109,12 @@ class SettingsViewModel(
                                 remote.recipe.copy(id = 0, isUserCreated = true),
                                 remote.ingredients
                             )
+                        } else if (remote.recipe.lastUpdated > existing.lastUpdated) {
+                            // Update existing recipe if remote is newer
+                            recipeDao.updateRecipeWithIngredients(
+                                remote.recipe.copy(id = existing.id, isUserCreated = true),
+                                remote.ingredients
+                            )
                         }
                     }
                     val finalRecipes = recipeDao.getAllUserRecipesSync()
@@ -178,7 +184,8 @@ class SettingsViewModel(
 
                         friendRecipes.forEach { remote ->
                             val existing = recipeDao.getRecipeByUuid(remote.recipe.uuid)
-                            if (existing == null) {
+                            
+                            if (existing == null || remote.recipe.lastUpdated > existing.lastUpdated) {
                                 var finalImageUrl = remote.recipe.imageUrl
                                 // If recipe has image, try to download it from friend's Drive
                                 if (finalImageUrl.startsWith("content://")) {
@@ -192,16 +199,28 @@ class SettingsViewModel(
                                     }
                                 }
 
-                                recipeDao.insertRecipeWithIngredients(
-                                    remote.recipe.copy(
-                                        id = 0,
-                                        isUserCreated = false,
-                                        ownerName = friend.name.ifBlank { friend.email },
-                                        imageUrl = finalImageUrl
-                                    ),
-                                    remote.ingredients
-                                )
-                                totalImportedCount++
+                                if (existing == null) {
+                                    recipeDao.insertRecipeWithIngredients(
+                                        remote.recipe.copy(
+                                            id = 0,
+                                            isUserCreated = false,
+                                            ownerName = friend.name.ifBlank { friend.email },
+                                            imageUrl = finalImageUrl
+                                        ),
+                                        remote.ingredients
+                                    )
+                                    totalImportedCount++
+                                } else {
+                                    recipeDao.updateRecipeWithIngredients(
+                                        remote.recipe.copy(
+                                            id = existing.id,
+                                            isUserCreated = false,
+                                            ownerName = friend.name.ifBlank { friend.email },
+                                            imageUrl = finalImageUrl
+                                        ),
+                                        remote.ingredients
+                                    )
+                                }
                             }
                         }
                     }

@@ -17,5 +17,6 @@ data class RecipeEntity(
     val tag: String = "",
     val isUserCreated: Boolean = false,
     val ownerName: String = "",
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val lastUpdated: Long = System.currentTimeMillis()
 )

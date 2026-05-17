@@ -87,13 +87,14 @@ class DriveSyncManager(private val googleDriveService: GoogleDriveService) {
     suspend fun downloadImage(fileName: String, ownerEmail: String? = null): ByteArray? = withContext(Dispatchers.IO) {
         val driveService = googleDriveService.getDriveService() ?: return@withContext null
         try {
-            val query = if (ownerEmail == null) {
-                val rootId = getOrCreateRootFolder() ?: return@withContext null
-                val imagesFolderId = getOrCreateSubFolder(rootId, "images") ?: return@withContext null
-                "name = '$fileName' and '$imagesFolderId' in parents and trashed = false"
+            val rootId = if (ownerEmail == null) {
+                getOrCreateRootFolder()
             } else {
-                "name = '$fileName' and '$ownerEmail' in owners and trashed = false"
-            }
+                getFriendRootFolder(ownerEmail)
+            } ?: return@withContext null
+            
+            val imagesFolderId = getOrCreateSubFolder(rootId, "images") ?: return@withContext null
+            val query = "name = '$fileName' and '$imagesFolderId' in parents and trashed = false"
 
             val files = driveService.files().list().setQ(query).execute().files
             if (files.isEmpty()) return@withContext null
@@ -111,7 +112,9 @@ class DriveSyncManager(private val googleDriveService: GoogleDriveService) {
         val driveService = googleDriveService.getDriveService() ?: return@withContext null
         
         try {
-            val query = "name = '$FOLDER_NAME' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+            // Dodajemy 'me' in owners, aby upewnić się, że pobieramy własny folder, 
+            // a nie folder udostępniony przez znajomego o tej samej nazwie.
+            val query = "name = '$FOLDER_NAME' and mimeType = 'application/vnd.google-apps.folder' and trashed = false and 'me' in owners"
             val result = driveService.files().list().setQ(query).execute()
             val folder = result.files.firstOrNull()
 
@@ -127,6 +130,20 @@ class DriveSyncManager(private val googleDriveService: GoogleDriveService) {
             newFolder.id
         } catch (e: Exception) {
             Log.e("DriveSyncManager", "Error getting/creating folder", e)
+            null
+        }
+    }
+
+    suspend fun getFriendRootFolder(friendEmail: String): String? = withContext(Dispatchers.IO) {
+        val driveService = googleDriveService.getDriveService() ?: return@withContext null
+        try {
+            val query = "name = '$FOLDER_NAME' and '$friendEmail' in owners and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+            val result = driveService.files().list().setQ(query).execute()
+            val folder = result.files.firstOrNull()
+            Log.d("DriveSyncManager", "Znaleziono folder znajomego $friendEmail: ${folder?.id}")
+            folder?.id
+        } catch (e: Exception) {
+            Log.e("DriveSyncManager", "Błąd podczas szukania folderu znajomego $friendEmail", e)
             null
         }
     }
@@ -162,12 +179,13 @@ class DriveSyncManager(private val googleDriveService: GoogleDriveService) {
         val driveService = googleDriveService.getDriveService() ?: return@withContext null
         
         try {
-            val query = if (friendEmail == null) {
-                val folderId = getOrCreateRootFolder() ?: return@withContext null
-                "name = '${category.fileName}' and '$folderId' in parents and trashed = false"
+            val folderId = if (friendEmail == null) {
+                getOrCreateRootFolder()
             } else {
-                "name = '${category.fileName}' and '${friendEmail}' in owners and trashed = false"
-            }
+                getFriendRootFolder(friendEmail)
+            } ?: return@withContext null
+
+            val query = "name = '${category.fileName}' and '$folderId' in parents and trashed = false"
             
             val existingFiles = driveService.files().list()
                 .setQ(query)

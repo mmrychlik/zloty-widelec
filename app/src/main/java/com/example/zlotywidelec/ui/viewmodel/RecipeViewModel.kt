@@ -148,7 +148,8 @@ class RecipeViewModel(
                 instructions = instructions,
                 imageUrl = finalImageUrl,
                 tag = tag,
-                isUserCreated = true
+                isUserCreated = true,
+                lastUpdated = System.currentTimeMillis()
             )
             val ingredientEntities = ingredients.map { (iName, amount, iUnit) ->
                 RecipeIngredientEntity(
@@ -199,7 +200,10 @@ class RecipeViewModel(
             } else {
                 recipe.imageUrl
             }
-            val updatedRecipe = recipe.copy(imageUrl = finalImageUrl)
+            val updatedRecipe = recipe.copy(
+                imageUrl = finalImageUrl,
+                lastUpdated = System.currentTimeMillis()
+            )
             val ingredientEntities = ingredients.map { (iName, amount, iUnit) ->
                 RecipeIngredientEntity(
                     recipeId = recipe.id,

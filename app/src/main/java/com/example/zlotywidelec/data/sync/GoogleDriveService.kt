@@ -22,7 +22,7 @@ class GoogleDriveService(val context: Context) {
     val googleSignInClient: GoogleSignInClient by lazy {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestScopes(Scope(DriveScopes.DRIVE_FILE))
+            .requestScopes(Scope(DriveScopes.DRIVE))
             .build()
         GoogleSignIn.getClient(context, gso)
     }
@@ -34,7 +34,7 @@ class GoogleDriveService(val context: Context) {
     fun getDriveService(): Drive? {
         val account = _userAccount.value ?: return null
         val credential = GoogleAccountCredential.usingOAuth2(
-            context, listOf(DriveScopes.DRIVE_FILE)
+            context, listOf(DriveScopes.DRIVE)
         ).setSelectedAccount(account.account)
 
         return Drive.Builder(
