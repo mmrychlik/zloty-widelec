@@ -34,7 +34,6 @@ fun FriendsRecipesScreen(
     val userAccount by settingsViewModel.userAccount.collectAsState()
     
     var showAddFriendDialog by remember { mutableStateOf(false) }
-    var isRefreshing by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -52,39 +51,6 @@ fun FriendsRecipesScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            // Header with Sync Action
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    "Zarządzaj znajomymi",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                if (userAccount != null) {
-                    IconButton(
-                        onClick = {
-                            isRefreshing = true
-                            settingsViewModel.syncWithGoogleDrive { _ ->
-                                isRefreshing = false
-                            }
-                        },
-                        enabled = !isRefreshing
-                    ) {
-                        if (isRefreshing) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.Refresh, contentDescription = "Synchronizuj")
-                        }
-                    }
-                }
-            }
-
             if (userAccount == null) {
                 Box(modifier = Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(

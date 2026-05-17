@@ -33,6 +33,16 @@ class RecipeViewModel(
     private val _filterTags = MutableStateFlow<Set<String>>(emptySet())
     val filterTags: StateFlow<Set<String>> = _filterTags
 
+    private val _filterOwner = MutableStateFlow<String?>(null) // null = Wszystkie, "WŁASNE" = Moje, else = Friend name
+    val filterOwner: StateFlow<String?> = _filterOwner
+
+    val availableOwners = recipeDao.getAllRecipes().map { recipes ->
+        recipes.filter { !it.recipe.isUserCreated && it.recipe.ownerName.isNotBlank() }
+            .map { it.recipe.ownerName }
+            .distinct()
+            .sorted()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val fridgeItems = ingredientDao.getFridgeItems().stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -53,9 +63,18 @@ class RecipeViewModel(
         _searchQuery,
         _sortOrder,
         _filterTags,
+        _filterOwner,
         fridgeItems
-    ) { recipes, query, sort, tags, fridge ->
-        filterAndSortRecipes(recipes, query, sort, tags, fridge)
+    ) { args: Array<Any?> ->
+        @Suppress("UNCHECKED_CAST")
+        filterAndSortRecipes(
+            args[0] as List<RecipeWithIngredients>,
+            args[1] as String,
+            args[2] as RecipeSortOrder,
+            args[3] as Set<String>,
+            args[4] as String?,
+            args[5] as List<IngredientEntity>
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val filteredUserRecipes = combine(
@@ -65,7 +84,7 @@ class RecipeViewModel(
         _filterTags,
         fridgeItems
     ) { recipes, query, sort, tags, fridge ->
-        filterAndSortRecipes(recipes, query, sort, tags, fridge)
+        filterAndSortRecipes(recipes, query, sort, tags, "WŁASNE", fridge)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val filteredFriendsRecipes = combine(
@@ -75,7 +94,7 @@ class RecipeViewModel(
         _filterTags,
         fridgeItems
     ) { recipes, query, sort, tags, fridge ->
-        filterAndSortRecipes(recipes, query, sort, tags, fridge)
+        filterAndSortRecipes(recipes, query, sort, tags, null, fridge)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val recipeAvailability = combine(allRecipes, fridgeItems) { recipes, fridge ->
@@ -112,6 +131,10 @@ class RecipeViewModel(
         } else {
             _filterTags.value = current + tag
         }
+    }
+
+    fun setFilterOwner(owner: String?) {
+        _filterOwner.value = owner
     }
 
     fun getFridgeAmountForIngredient(reqName: String, reqUnit: String): Double {
@@ -253,6 +276,7 @@ class RecipeViewModel(
         query: String,
         sort: RecipeSortOrder,
         tags: Set<String>,
+        ownerFilter: String?,
         fridge: List<IngredientEntity>
     ): List<RecipeWithIngredients> {
         var filtered = if (query.isBlank()) {
@@ -263,6 +287,14 @@ class RecipeViewModel(
 
         if (tags.isNotEmpty()) {
             filtered = filtered.filter { tags.contains(it.recipe.tag) }
+        }
+
+        if (ownerFilter != null) {
+            filtered = if (ownerFilter == "WŁASNE") {
+                filtered.filter { it.recipe.isUserCreated }
+            } else {
+                filtered.filter { !it.recipe.isUserCreated && it.recipe.ownerName == ownerFilter }
+            }
         }
 
         return when (sort) {

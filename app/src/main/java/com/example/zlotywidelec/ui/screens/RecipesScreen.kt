@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -53,6 +54,8 @@ fun RecipesScreen(
     val availability by viewModel.recipeAvailability.collectAsState()
     val sortOrder by viewModel.sortOrder.collectAsState()
     val filterTags by viewModel.filterTags.collectAsState()
+    val filterOwner by viewModel.filterOwner.collectAsState()
+    val availableOwners by viewModel.availableOwners.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
     
     var showAddDialog by remember { mutableStateOf(false) }
@@ -60,6 +63,7 @@ fun RecipesScreen(
     var recipeToDelete by remember { mutableStateOf<com.example.zlotywidelec.data.local.entity.RecipeEntity?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
+    var showOwnerMenu by remember { mutableStateOf(false) }
 
     val recipeTagOptions = listOf(
         "obiad" to "Obiad",
@@ -202,6 +206,56 @@ fun RecipesScreen(
                                     fontWeight = FontWeight.Bold
                                 )
                             }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Owner Filter Box
+                Box {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { showOwnerMenu = true }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(text = "Znajomi", style = MaterialTheme.typography.labelSmall)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(Icons.Default.People, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    }
+                    DropdownMenu(
+                        expanded = showOwnerMenu,
+                        onDismissRequest = { showOwnerMenu = false },
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.widthIn(min = 160.dp)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Wszystkie") },
+                            onClick = {
+                                viewModel.setFilterOwner(null)
+                                showOwnerMenu = false
+                            },
+                            modifier = Modifier.background(if (filterOwner == null) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Własne") },
+                            onClick = {
+                                viewModel.setFilterOwner("WŁASNE")
+                                showOwnerMenu = false
+                            },
+                            modifier = Modifier.background(if (filterOwner == "WŁASNE") MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
+                        )
+                        availableOwners.forEach { owner ->
+                            DropdownMenuItem(
+                                text = { Text(owner) },
+                                onClick = {
+                                    viewModel.setFilterOwner(owner)
+                                    showOwnerMenu = false
+                                },
+                                modifier = Modifier.background(if (filterOwner == owner) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else Color.Transparent)
+                            )
                         }
                     }
                 }
@@ -671,185 +725,183 @@ fun RecipeItem(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
     ) {
-        Box {
-            Column {
-                // Image Header
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                ) {
-                    if (recipe.recipe.imageUrl.isNotEmpty()) {
-                        AsyncImage(
-                            model = recipe.recipe.imageUrl,
+        Column {
+            // Image Header
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+            ) {
+                if (recipe.recipe.imageUrl.isNotEmpty()) {
+                    AsyncImage(
+                        model = recipe.recipe.imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.MenuBook,
                             contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.3f)
                         )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.MenuBook,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.3f)
-                            )
-                        }
                     }
+                }
 
-                    // Availability Badge
+                // Availability Badge
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(12.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = when {
+                        availabilityPercent >= 100 -> Color(0xFF4CAF50)
+                        availabilityPercent > 0 -> Color(0xFFFF9800)
+                        else -> Color(0xFFF44336)
+                    }
+                ) {
+                    Text(
+                        text = "$availabilityPercent%",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Owner Tag (only for synced recipes)
+                if (!recipe.recipe.isUserCreated && recipe.recipe.ownerName.isNotEmpty()) {
                     Surface(
                         modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(12.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        color = when {
-                            availabilityPercent >= 100 -> Color(0xFF4CAF50)
-                            availabilityPercent > 0 -> Color(0xFFFF9800)
-                            else -> Color(0xFFF44336)
-                        }
+                            .align(Alignment.TopStart)
+                            .padding(8.dp),
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
                     ) {
                         Text(
-                            text = "$availabilityPercent%",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White,
+                            text = recipe.recipe.ownerName,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     }
+                }
+            }
 
-                    // Owner Tag (only for synced recipes)
-                    if (!recipe.recipe.isUserCreated && recipe.recipe.ownerName.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(8.dp),
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
-                        ) {
+            // Info Section
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = recipe.recipe.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (recipe.recipe.tag.isNotEmpty()) {
                             Text(
-                                text = recipe.recipe.ownerName,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                text = recipe.recipe.tag.uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
                             )
+                        }
+                    }
+
+                    if (recipe.recipe.isUserCreated) {
+                        Row {
+                            IconButton(onClick = onEdit) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edytuj", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            }
+                            IconButton(onClick = onDelete) {
+                                Icon(Icons.Default.Delete, contentDescription = "Usuń", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
                 }
 
-                // Info Section
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = recipe.recipe.name,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            if (recipe.recipe.tag.isNotEmpty()) {
-                                Text(
-                                    text = recipe.recipe.tag.uppercase(),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
-                                )
-                            }
-                        }
+                if (expanded) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                        if (recipe.recipe.isUserCreated) {
-                            Row {
-                                IconButton(onClick = onEdit) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edytuj", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                                }
-                                IconButton(onClick = onDelete) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Usuń", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-                                }
+                    Text(
+                        "SKŁADNIKI",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    recipe.ingredients.forEach { ingredient ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(ingredient.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            
+                            val fridgeAmount = getFridgeAmount(ingredient.name, ingredient.unit)
+                            val fridgeAmountFormatted = if (fridgeAmount % 1.0 == 0.0) fridgeAmount.toInt().toString() else "%.2f".format(fridgeAmount)
+                            val reqAmountFormatted = if (ingredient.amount % 1.0 == 0.0) ingredient.amount.toInt().toString() else "%.2f".format(ingredient.amount)
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("$reqAmountFormatted ${ingredient.unit}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("|", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    Icons.Default.Kitchen,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(": $fridgeAmountFormatted ${ingredient.unit}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                             }
                         }
                     }
 
-                    if (expanded) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-                        Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "PRZYGOTOWANIE",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        recipe.recipe.instructions,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
 
-                        Text(
-                            "SKŁADNIKI",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        recipe.ingredients.forEach { ingredient ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(ingredient.name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                                
-                                val fridgeAmount = getFridgeAmount(ingredient.name, ingredient.unit)
-                                val fridgeAmountFormatted = if (fridgeAmount % 1.0 == 0.0) fridgeAmount.toInt().toString() else "%.2f".format(fridgeAmount)
-                                val reqAmountFormatted = if (ingredient.amount % 1.0 == 0.0) ingredient.amount.toInt().toString() else "%.2f".format(ingredient.amount)
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("$reqAmountFormatted ${ingredient.unit}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("|", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Icon(
-                                        Icons.Default.Kitchen,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(": $fridgeAmountFormatted ${ingredient.unit}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "PRZYGOTOWANIE",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            recipe.recipe.instructions,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = onAddToShoppingList,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary,
-                                contentColor = MaterialTheme.colorScheme.onSecondary
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.ShoppingCart, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Dodaj brakujące do listy", fontWeight = FontWeight.Bold)
-                        }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = onAddToShoppingList,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.ShoppingCart, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Dodaj brakujące do listy", fontWeight = FontWeight.Bold)
                     }
                 }
             }
