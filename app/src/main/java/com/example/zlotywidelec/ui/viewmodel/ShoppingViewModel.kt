@@ -211,16 +211,30 @@ class ShoppingViewModel(
 
     fun addIngredientsFromRecipe(ingredients: List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity>) {
         viewModelScope.launch {
+            val fridgeItems = ingredientDao.getAllFridgeItemsSync()
+            
             ingredients.forEach { ri ->
-                ingredientDao.insertIngredient(
-                    com.example.zlotywidelec.data.local.entity.IngredientEntity(
-                        name = ri.name,
-                        amount = ri.amount,
-                        unit = ri.unit,
-                        tag = "", // Default tag or could be inferred
-                        isInFridge = false
+                val normalizedName = ri.name.normalize()
+                val matches = fridgeItems.filter { it.name.normalize() == normalizedName }
+                
+                val amountInFridgeBase = matches.sumOf { convertAmountToBase(it.amount, it.unit) }
+                val requiredAmountBase = convertAmountToBase(ri.amount, ri.unit)
+                
+                val missingAmountBase = requiredAmountBase - amountInFridgeBase
+                
+                if (missingAmountBase > 0) {
+                    val missingAmountInRecipeUnit = convertBaseToUnit(missingAmountBase, ri.unit)
+                    
+                    ingredientDao.insertIngredient(
+                        com.example.zlotywidelec.data.local.entity.IngredientEntity(
+                            name = ri.name,
+                            amount = missingAmountInRecipeUnit,
+                            unit = ri.unit,
+                            tag = "",
+                            isInFridge = false
+                        )
                     )
-                )
+                }
             }
 
             // Auto-sync
@@ -235,6 +249,36 @@ class ShoppingViewModel(
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun convertAmountToBase(amount: Double, unit: String): Double {
+        return when {
+            unit.endsWith("kg") -> amount * 1000.0
+            unit.endsWith("dag") -> amount * 10.0
+            unit.endsWith("g") && !unit.endsWith("dag") && !unit.endsWith("kg") -> amount
+            unit.endsWith("ml") -> amount / 1000.0
+            unit.endsWith("l") && !unit.endsWith("ml") -> amount
+            else -> amount
+        }
+    }
+
+    private fun convertBaseToUnit(baseAmount: Double, targetUnit: String): Double {
+        return when {
+            targetUnit.endsWith("kg") -> baseAmount / 1000.0
+            targetUnit.endsWith("dag") -> baseAmount / 10.0
+            targetUnit.endsWith("g") && !targetUnit.endsWith("dag") && !targetUnit.endsWith("kg") -> baseAmount
+            targetUnit.endsWith("ml") -> baseAmount * 1000.0
+            targetUnit.endsWith("l") && !targetUnit.endsWith("ml") -> baseAmount
+            else -> baseAmount
+        }
+    }
+
+    private fun String.normalize(): String {
+        val temp = java.text.Normalizer.normalize(this, java.text.Normalizer.Form.NFD)
+        return "\\p{InCombiningDiacriticalMarks}+".toRegex()
+            .replace(temp, "")
+            .lowercase()
+            .trim()
     }
 }
 
