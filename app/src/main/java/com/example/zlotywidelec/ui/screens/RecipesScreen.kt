@@ -61,6 +61,7 @@ fun RecipesScreen(
     
     var showAddDialog by remember { mutableStateOf(false) }
     var recipeToEdit by remember { mutableStateOf<RecipeWithIngredients?>(null) }
+    var recipeToDelete by remember { mutableStateOf<com.example.zlotywidelec.data.local.entity.RecipeEntity?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
 
@@ -231,7 +232,7 @@ fun RecipesScreen(
                             recipe = recipe, 
                             availabilityPercent = percent,
                             getFridgeAmount = { name, unit -> viewModel.getFridgeAmountForIngredient(name, unit) },
-                            onDelete = { viewModel.deleteRecipe(recipe.recipe) },
+                            onDelete = { recipeToDelete = recipe.recipe },
                             onEdit = { recipeToEdit = recipe },
                             onAddToShoppingList = { onAddToShoppingList(recipe.ingredients) }
                         )
@@ -247,6 +248,30 @@ fun RecipesScreen(
             onDismiss = { showAddDialog = false },
             onConfirm = { name, instructions, imageUrl, tag, ingredients ->
                 viewModel.addRecipe(name, instructions, imageUrl, tag, ingredients)
+            }
+        )
+    }
+
+    recipeToDelete?.let { recipe ->
+        AlertDialog(
+            onDismissRequest = { recipeToDelete = null },
+            title = { Text("Usuń przepis") },
+            text = { Text("Czy na pewno chcesz usunąć przepis \"${recipe.name}\"?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteRecipe(recipe)
+                        recipeToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Usuń")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { recipeToDelete = null }) {
+                    Text("Anuluj")
+                }
             }
         )
     }
@@ -312,7 +337,8 @@ fun AddRecipeDialog(
                             guidelines = CropImageView.Guidelines.ON,
                             aspectRatioX = 16,
                             aspectRatioY = 9,
-                            fixAspectRatio = true
+                            fixAspectRatio = true,
+                            skipEditing = false
                         )
                     )
                 )
