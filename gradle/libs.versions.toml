@@ -12,6 +12,11 @@ room = "2.6.1"
 ksp = "2.1.0-1.0.29"
 coil = "2.7.0"
 kotlinxSerialization = "1.7.3"
+googleAuth = "21.3.0"
+googleApiClient = "2.7.0"
+googleDrive = "v3-rev20241027-2.0.0"
+googleHttp = "1.45.0"
+imageCropper = "4.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,6 +42,11 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+google-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "googleAuth" }
+google-api-client = { group = "com.google.api-client", name = "google-api-client-android", version.ref = "googleApiClient" }
+google-drive = { group = "com.google.apis", name = "google-api-services-drive", version.ref = "googleDrive" }
+google-http-gson = { group = "com.google.http-client", name = "google-http-client-gson", version.ref = "googleHttp" }
+image-cropper = { group = "com.github.CanHub", name = "Android-Image-Cropper", version.ref = "imageCropper" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -62,6 +62,25 @@ class DataBackupManager(
         }
     }
 
+    suspend fun saveImageFromBytes(data: ByteArray, fileName: String): Uri? = withContext(Dispatchers.IO) {
+        val storageUriStr = getPhotoStorageUri() ?: return@withContext null
+        val storageUri = Uri.parse(storageUriStr)
+        try {
+            val treeId = DocumentsContract.getTreeDocumentId(storageUri)
+            val parentUri = DocumentsContract.buildDocumentUriUsingTree(storageUri, treeId)
+            
+            val fileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, "image/jpeg", fileName) ?: return@withContext null
+            
+            context.contentResolver.openOutputStream(fileUri)?.use { output ->
+                output.write(data)
+            }
+            fileUri
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     suspend fun copyImageToInternalStorage(sourceUri: Uri): Uri? = withContext(Dispatchers.IO) {
         val storageUriStr = getPhotoStorageUri() ?: return@withContext null
         if (sourceUri.toString().startsWith(storageUriStr)) return@withContext sourceUri

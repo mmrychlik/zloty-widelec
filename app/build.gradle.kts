@@ -36,6 +36,14 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+        }
+    }
 }
 
 dependencies {
@@ -53,6 +61,13 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.coil.compose)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.image.cropper)
+
+    // Google Drive & Auth
+    implementation(libs.google.auth)
+    implementation(libs.google.api.client)
+    implementation(libs.google.drive)
+    implementation(libs.google.http.gson)
 
     // Room
     implementation(libs.androidx.room.runtime)

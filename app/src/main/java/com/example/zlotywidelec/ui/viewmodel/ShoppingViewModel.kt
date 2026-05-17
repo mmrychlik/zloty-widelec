@@ -7,6 +7,7 @@ import com.example.zlotywidelec.data.local.dao.IngredientDao
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
 import com.example.zlotywidelec.data.local.dao.IngredientNameAndUnit
 import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
+import com.example.zlotywidelec.data.sync.DriveSyncManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,10 @@ enum class ShoppingSortOrder {
     CATEGORY_DESC
 }
 
-class ShoppingViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
+class ShoppingViewModel(
+    private val ingredientDao: IngredientDao,
+    private val syncManager: DriveSyncManager
+) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -128,33 +132,120 @@ class ShoppingViewModel(private val ingredientDao: IngredientDao) : ViewModel() 
             ingredientDao.insertProductSuggestion(
                 ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit, tag = tag)
             )
+            
+            // Auto-sync
+            try {
+                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
+                    allShoppingItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun toggleItemChecked(item: IngredientEntity) {
         viewModelScope.launch {
             ingredientDao.updateIngredient(item.copy(isChecked = !item.isChecked))
+            
+            // Auto-sync
+            try {
+                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
+                    allShoppingItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun deleteItem(item: IngredientEntity) {
         viewModelScope.launch {
             ingredientDao.deleteIngredient(item)
+            
+            // Auto-sync
+            try {
+                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
+                    allShoppingItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun moveCheckedToFridge() {
         viewModelScope.launch {
             ingredientDao.moveCheckedToFridge(System.currentTimeMillis())
+            
+            // Auto-sync
+            try {
+                // Sync both since moving affects both
+                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
+                    allShoppingItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+                
+                val allFridgeItems = ingredientDao.getAllFridgeItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.FRIDGE,
+                    allFridgeItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun addIngredientsFromRecipe(ingredients: List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity>) {
+        viewModelScope.launch {
+            ingredients.forEach { ri ->
+                ingredientDao.insertIngredient(
+                    com.example.zlotywidelec.data.local.entity.IngredientEntity(
+                        name = ri.name,
+                        amount = ri.amount,
+                        unit = ri.unit,
+                        tag = "", // Default tag or could be inferred
+                        isInFridge = false
+                    )
+                )
+            }
+
+            // Auto-sync
+            try {
+                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
+                    allShoppingItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }
 
-class ShoppingViewModelFactory(private val ingredientDao: IngredientDao) : ViewModelProvider.Factory {
+class ShoppingViewModelFactory(
+    private val ingredientDao: IngredientDao,
+    private val syncManager: DriveSyncManager
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ShoppingViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return ShoppingViewModel(ingredientDao) as T
+            return ShoppingViewModel(ingredientDao, syncManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

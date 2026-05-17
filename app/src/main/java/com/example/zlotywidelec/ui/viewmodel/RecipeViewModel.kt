@@ -20,7 +20,8 @@ enum class RecipeSortOrder {
 class RecipeViewModel(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,
-    private val backupManager: com.example.zlotywidelec.data.io.DataBackupManager
+    private val backupManager: com.example.zlotywidelec.data.io.DataBackupManager,
+    private val syncManager: com.example.zlotywidelec.data.sync.DriveSyncManager
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -45,6 +46,16 @@ class RecipeViewModel(
         ingredientDao.getAllProductSuggestions()
     ) { unique, suggested ->
         (unique + suggested).distinctBy { it.name.lowercase() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allFilteredRecipes = combine(
+        recipeDao.getAllRecipes(),
+        _searchQuery,
+        _sortOrder,
+        _filterTags,
+        fridgeItems
+    ) { recipes, query, sort, tags, fridge ->
+        filterAndSortRecipes(recipes, query, sort, tags, fridge)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val filteredUserRecipes = combine(
@@ -103,6 +114,28 @@ class RecipeViewModel(
         }
     }
 
+    fun getFridgeAmountForIngredient(reqName: String, reqUnit: String): Double {
+        val fridge = fridgeItems.value
+        val normalizedReqName = reqName.normalize()
+        
+        val matches = fridge.filter { it.name.normalize() == normalizedReqName }
+        if (matches.isEmpty()) return 0.0
+
+        val totalAmountBase = matches.sumOf { convertAmountToBase(it.amount, it.unit) }
+        return convertBaseToUnit(totalAmountBase, reqUnit)
+    }
+
+    private fun convertBaseToUnit(baseAmount: Double, targetUnit: String): Double {
+        return when {
+            targetUnit.endsWith("kg") -> baseAmount / 1000.0
+            targetUnit.endsWith("dag") -> baseAmount / 10.0
+            targetUnit.endsWith("g") && !targetUnit.endsWith("dag") && !targetUnit.endsWith("kg") -> baseAmount
+            targetUnit.endsWith("ml") -> baseAmount * 1000.0
+            targetUnit.endsWith("l") && !targetUnit.endsWith("ml") -> baseAmount
+            else -> baseAmount
+        }
+    }
+
     fun addRecipe(name: String, instructions: String, imageUrl: String, tag: String, ingredients: List<Triple<String, Double, String>>) {
         viewModelScope.launch {
             val finalImageUrl = if (imageUrl.startsWith("content://")) {
@@ -126,12 +159,36 @@ class RecipeViewModel(
                 )
             }
             recipeDao.insertRecipeWithIngredients(recipe, ingredientEntities)
+            
+            // Auto-sync after adding
+            try {
+                val allUserRecipes = recipeDao.getAllUserRecipesSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
+                    allUserRecipes,
+                    kotlinx.serialization.builtins.ListSerializer(RecipeWithIngredients.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun deleteRecipe(recipe: RecipeEntity) {
         viewModelScope.launch {
             recipeDao.deleteRecipe(recipe)
+            
+            // Auto-sync after deleting
+            try {
+                val allUserRecipes = recipeDao.getAllUserRecipesSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
+                    allUserRecipes,
+                    kotlinx.serialization.builtins.ListSerializer(RecipeWithIngredients.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -152,6 +209,18 @@ class RecipeViewModel(
                 )
             }
             recipeDao.updateRecipeWithIngredients(updatedRecipe, ingredientEntities)
+
+            // Auto-sync after updating
+            try {
+                val allUserRecipes = recipeDao.getAllUserRecipesSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
+                    allUserRecipes,
+                    kotlinx.serialization.builtins.ListSerializer(RecipeWithIngredients.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -232,12 +301,13 @@ class RecipeViewModel(
 class RecipeViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,
-    private val backupManager: com.example.zlotywidelec.data.io.DataBackupManager
+    private val backupManager: com.example.zlotywidelec.data.io.DataBackupManager,
+    private val syncManager: com.example.zlotywidelec.data.sync.DriveSyncManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(RecipeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return RecipeViewModel(ingredientDao, recipeDao, backupManager) as T
+            return RecipeViewModel(ingredientDao, recipeDao, backupManager, syncManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

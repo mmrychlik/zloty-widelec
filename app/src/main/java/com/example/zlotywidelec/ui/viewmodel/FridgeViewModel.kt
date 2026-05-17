@@ -7,6 +7,7 @@ import com.example.zlotywidelec.data.local.dao.IngredientDao
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
 import com.example.zlotywidelec.data.local.dao.IngredientNameAndUnit
 import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
+import com.example.zlotywidelec.data.sync.DriveSyncManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,10 @@ enum class FridgeSortOrder {
     CATEGORY_DESC
 }
 
-class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
+class FridgeViewModel(
+    private val ingredientDao: IngredientDao,
+    private val syncManager: DriveSyncManager
+) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -118,21 +122,48 @@ class FridgeViewModel(private val ingredientDao: IngredientDao) : ViewModel() {
             ingredientDao.insertProductSuggestion(
                 ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit, tag = tag)
             )
+
+            // Auto-sync
+            try {
+                val allFridgeItems = ingredientDao.getAllFridgeItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.FRIDGE,
+                    allFridgeItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
     fun deleteItem(item: IngredientEntity) {
         viewModelScope.launch {
             ingredientDao.deleteIngredient(item)
+
+            // Auto-sync
+            try {
+                val allFridgeItems = ingredientDao.getAllFridgeItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.FRIDGE,
+                    allFridgeItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 }
 
-class FridgeViewModelFactory(private val ingredientDao: IngredientDao) : ViewModelProvider.Factory {
+class FridgeViewModelFactory(
+    private val ingredientDao: IngredientDao,
+    private val syncManager: DriveSyncManager
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(FridgeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return FridgeViewModel(ingredientDao) as T
+            return FridgeViewModel(ingredientDao, syncManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

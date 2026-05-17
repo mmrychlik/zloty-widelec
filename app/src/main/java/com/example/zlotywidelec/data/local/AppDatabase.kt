@@ -5,8 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.zlotywidelec.data.local.dao.FriendDao
 import com.example.zlotywidelec.data.local.dao.IngredientDao
 import com.example.zlotywidelec.data.local.dao.RecipeDao
+import com.example.zlotywidelec.data.local.entity.FriendEntity
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
 import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
 import com.example.zlotywidelec.data.local.entity.RecipeEntity
@@ -20,14 +22,16 @@ import kotlinx.coroutines.launch
         IngredientEntity::class,
         ProductSuggestionEntity::class,
         RecipeEntity::class,
-        RecipeIngredientEntity::class
+        RecipeIngredientEntity::class,
+        FriendEntity::class
     ],
-    version = 15,
+    version = 17,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun ingredientDao(): IngredientDao
     abstract fun recipeDao(): RecipeDao
+    abstract fun friendDao(): FriendDao
 
     companion object {
         @Volatile

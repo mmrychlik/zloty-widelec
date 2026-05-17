@@ -46,21 +46,18 @@ fun AboutSection() {
 }
 
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel) {
+fun SettingsScreen(
+    viewModel: SettingsViewModel,
+    onSignInClick: () -> Unit
+) {
     val isDarkMode by viewModel.isDarkMode.collectAsState()
     val message by viewModel.message.collectAsState()
     val photoStorageUri by viewModel.photoStorageUri.collectAsState()
+    val userAccount by viewModel.userAccount.collectAsState()
+
     var showClearDataDialog by remember { mutableStateOf(false) }
     var showExportDataDialog by remember { mutableStateOf(false) }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(message) {
-        message?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearMessage()
-        }
-    }
+    var showShareDialog by remember { mutableStateOf(false) }
 
     val folderPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -135,6 +132,57 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
             HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
 
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Google Drive (Synchronizacja)",
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                if (userAccount != null) {
+                    Text(
+                        text = "Zalogowano jako: ${userAccount?.email}",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Button(
+                        onClick = { viewModel.signOutGoogle() },
+                        modifier = Modifier.padding(top = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                    ) {
+                        Text("Wyloguj")
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = { viewModel.syncWithGoogleDrive() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Synchronizuj dane teraz")
+                    }
+                    Text(
+                        "Synchronizacja pobierze dane od znajomych i wyśle Twoje dane do chmury.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                } else {
+                    Text(
+                        text = "Niepołączono",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                    )
+                    Button(
+                        onClick = onSignInClick,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text("Połącz z Google Drive")
+                    }
+                }
+            }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+
             TextButton(
                 onClick = { showExportDataDialog = true },
                 modifier = Modifier.fillMaxWidth(),
@@ -179,7 +227,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     horizontalArrangement = Arrangement.Start
                 ) {
                     Text(
-                        text = "Wyczyść dane",
+                        text = "Wyczyść dane lokalne",
                         fontSize = 18.sp,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -190,13 +238,6 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
 
             AboutSection()
         }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-        )
     }
 
     if (showExportDataDialog) {

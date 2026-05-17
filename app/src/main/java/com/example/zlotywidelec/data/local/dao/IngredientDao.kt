@@ -51,6 +51,9 @@ interface IngredientDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertIngredients(ingredients: List<IngredientEntity>)
+
+    @Query("SELECT * FROM ingredients WHERE uuid = :uuid LIMIT 1")
+    suspend fun getIngredientByUuid(uuid: String): IngredientEntity?
 }
 
 data class IngredientNameAndUnit(

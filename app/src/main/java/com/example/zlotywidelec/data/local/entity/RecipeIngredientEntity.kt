@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 @Serializable
 @Entity(
@@ -22,6 +23,7 @@ import kotlinx.serialization.Serializable
 data class RecipeIngredientEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val uuid: String = UUID.randomUUID().toString(),
     val recipeId: Long,
     val name: String,
     val amount: Double,

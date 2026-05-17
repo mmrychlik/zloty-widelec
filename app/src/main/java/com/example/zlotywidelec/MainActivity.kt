@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -40,7 +41,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.zlotywidelec.data.io.DataBackupManager
 import com.example.zlotywidelec.data.local.AppDatabase
+import com.example.zlotywidelec.data.sync.DriveSyncManager
+import com.example.zlotywidelec.data.sync.GoogleDriveService
 import com.example.zlotywidelec.ui.screens.*
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.example.zlotywidelec.ui.theme.*
 import com.example.zlotywidelec.ui.viewmodel.*
 
@@ -52,13 +56,23 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val database = remember { AppDatabase.getDatabase(context) }
             val backupManager = remember { DataBackupManager(context, database.ingredientDao(), database.recipeDao()) }
+            val googleDriveService = remember { GoogleDriveService(context) }
+            val syncManager = remember { DriveSyncManager(googleDriveService) }
+            
             val settingsViewModel: SettingsViewModel = viewModel(
-                factory = SettingsViewModelFactory(database.ingredientDao(), database.recipeDao(), backupManager)
+                factory = SettingsViewModelFactory(
+                    database.ingredientDao(),
+                    database.recipeDao(),
+                    database.friendDao(),
+                    backupManager,
+                    googleDriveService,
+                    syncManager
+                )
             )
             val isDarkMode by settingsViewModel.isDarkMode.collectAsState()
             
             ZlotyWidelecTheme(darkTheme = isDarkMode) {
-                ZlotyWidelecApp(settingsViewModel, database, backupManager)
+                ZlotyWidelecApp(settingsViewModel, database, backupManager, googleDriveService, syncManager)
             }
         }
     }
@@ -66,9 +80,37 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase, backupManager: DataBackupManager) {
+fun ZlotyWidelecApp(
+    settingsViewModel: SettingsViewModel,
+    database: AppDatabase,
+    backupManager: DataBackupManager,
+    googleDriveService: GoogleDriveService,
+    syncManager: DriveSyncManager
+) {
     val photoStorageUri by settingsViewModel.photoStorageUri.collectAsState()
     var showFolderPrompt by remember { mutableStateOf(false) }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
+            settingsViewModel.updateGoogleAccount(account)
+        } catch (e: com.google.android.gms.common.api.ApiException) {
+            e.printStackTrace()
+            val errorMsg = when (e.statusCode) {
+                10 -> "Błąd programisty (10): Sprawdź SHA-1 i nazwę pakietu w Google Cloud Console."
+                7 -> "Błąd sieci. Sprawdź połączenie."
+                12501 -> "Logowanie anulowane."
+                else -> "Błąd logowania Google (${e.statusCode}): ${e.message}"
+            }
+            settingsViewModel.showMessage(errorMsg)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            settingsViewModel.showMessage("Nieoczekiwany błąd: ${e.message}")
+        }
+    }
 
     val folderPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -96,14 +138,24 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase,
     }
 
     val shoppingViewModel: ShoppingViewModel = viewModel(
-        factory = ShoppingViewModelFactory(database.ingredientDao())
+        factory = ShoppingViewModelFactory(database.ingredientDao(), syncManager)
     )
     val fridgeViewModel: FridgeViewModel = viewModel(
-        factory = FridgeViewModelFactory(database.ingredientDao())
+        factory = FridgeViewModelFactory(database.ingredientDao(), syncManager)
     )
     val recipeViewModel: RecipeViewModel = viewModel(
-        factory = RecipeViewModelFactory(database.ingredientDao(), database.recipeDao(), backupManager)
+        factory = RecipeViewModelFactory(database.ingredientDao(), database.recipeDao(), backupManager, syncManager)
     )
+
+    val message by settingsViewModel.message.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(message) {
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            settingsViewModel.clearMessage()
+        }
+    }
 
     var currentDestination by rememberSaveable { mutableStateOf(AppDestinations.SHOPPING_LIST) }
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
@@ -231,6 +283,16 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase,
                         },
                         actions = {
                             if (!isSearchActive && currentDestination.showSearch) {
+                                val userAccount by settingsViewModel.userAccount.collectAsState()
+                                if (userAccount != null) {
+                                    IconButton(onClick = { settingsViewModel.syncWithGoogleDrive() }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Sync,
+                                            contentDescription = "Synchronizuj",
+                                            tint = MaterialTheme.colorScheme.onBackground
+                                        )
+                                    }
+                                }
                                 IconButton(onClick = { isSearchActive = true }) {
                                     Icon(Icons.Default.Search, contentDescription = "Szukaj", tint = MaterialTheme.colorScheme.onBackground)
                                 }
@@ -252,6 +314,7 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase,
                     HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
                 }
             },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
             }
@@ -266,9 +329,27 @@ fun ZlotyWidelecApp(settingsViewModel: SettingsViewModel, database: AppDatabase,
                 when (currentDestination) {
                     AppDestinations.SHOPPING_LIST -> ShoppingListScreen(viewModel = shoppingViewModel)
                     AppDestinations.MY_FRIDGE -> MyFridgeScreen(viewModel = fridgeViewModel)
-                    AppDestinations.RECIPES -> RecipesScreen(viewModel = recipeViewModel)
-                    AppDestinations.FRIENDS_RECIPES -> FriendsRecipesScreen(viewModel = recipeViewModel)
-                    AppDestinations.SETTINGS -> SettingsScreen(viewModel = settingsViewModel)
+                    AppDestinations.RECIPES -> RecipesScreen(
+                        viewModel = recipeViewModel,
+                        onAddToShoppingList = { ingredients: List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity> ->
+                            shoppingViewModel.addIngredientsFromRecipe(ingredients)
+                            currentDestination = AppDestinations.SHOPPING_LIST
+                        }
+                    )
+                    AppDestinations.FRIENDS_RECIPES -> FriendsRecipesScreen(
+                        viewModel = recipeViewModel,
+                        settingsViewModel = settingsViewModel,
+                        onAddToShoppingList = { ingredients: List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity> ->
+                            shoppingViewModel.addIngredientsFromRecipe(ingredients)
+                            currentDestination = AppDestinations.SHOPPING_LIST
+                        }
+                    )
+                    AppDestinations.SETTINGS -> SettingsScreen(
+                        viewModel = settingsViewModel,
+                        onSignInClick = {
+                            googleSignInLauncher.launch(settingsViewModel.googleDriveService.googleSignInClient.signInIntent)
+                        }
+                    )
                 }
             }
         }

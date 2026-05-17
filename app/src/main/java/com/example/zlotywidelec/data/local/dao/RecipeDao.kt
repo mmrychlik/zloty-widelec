@@ -4,7 +4,9 @@ import androidx.room.*
 import com.example.zlotywidelec.data.local.entity.RecipeEntity
 import com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class RecipeWithIngredients(
     @Embedded val recipe: RecipeEntity,
     @Relation(
@@ -46,6 +48,9 @@ interface RecipeDao {
 
     @Query("DELETE FROM recipes WHERE isUserCreated = 1")
     suspend fun deleteAllUserRecipes()
+
+    @Query("SELECT * FROM recipes WHERE uuid = :uuid LIMIT 1")
+    suspend fun getRecipeByUuid(uuid: String): RecipeEntity?
 
     @Query("DELETE FROM recipe_ingredients WHERE recipeId = :recipeId")
     suspend fun deleteIngredientsByRecipeId(recipeId: Long)
