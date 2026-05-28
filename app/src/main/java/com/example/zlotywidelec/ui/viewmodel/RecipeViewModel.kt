@@ -8,10 +8,12 @@ import com.example.zlotywidelec.data.local.dao.IngredientDao
 import com.example.zlotywidelec.data.local.dao.RecipeDao
 import com.example.zlotywidelec.data.local.dao.RecipeWithIngredients
 import com.example.zlotywidelec.data.local.entity.IngredientEntity
+import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
 import com.example.zlotywidelec.data.local.entity.RecipeEntity
 import com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
  * Enum defining sort orders for recipes.
@@ -188,14 +190,24 @@ class RecipeViewModel(
                 lastUpdated = System.currentTimeMillis()
             )
             val ingredientEntities = ingredients.map { (iName, amount, iUnit) ->
+                val capitalizedName = iName.trim().replaceFirstChar {
+                    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+                }
                 RecipeIngredientEntity(
                     recipeId = 0,
-                    name = iName,
+                    name = capitalizedName,
                     amount = amount,
                     unit = iUnit
                 )
             }
             recipeDao.insertRecipeWithIngredients(recipe, ingredientEntities)
+
+            // Save ingredients as suggestions
+            ingredientEntities.forEach { ingredient ->
+                ingredientDao.insertProductSuggestion(
+                    ProductSuggestionEntity(name = ingredient.name, defaultUnit = ingredient.unit)
+                )
+            }
             
             // Auto-sync after adding
             try {
@@ -266,14 +278,24 @@ class RecipeViewModel(
                 lastUpdated = System.currentTimeMillis()
             )
             val ingredientEntities = ingredients.map { (iName, amount, iUnit) ->
+                val capitalizedName = iName.trim().replaceFirstChar {
+                    if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+                }
                 RecipeIngredientEntity(
                     recipeId = recipe.id,
-                    name = iName,
+                    name = capitalizedName,
                     amount = amount,
                     unit = iUnit
                 )
             }
             recipeDao.updateRecipeWithIngredients(updatedRecipe, ingredientEntities)
+
+            // Save ingredients as suggestions
+            ingredientEntities.forEach { ingredient ->
+                ingredientDao.insertProductSuggestion(
+                    ProductSuggestionEntity(name = ingredient.name, defaultUnit = ingredient.unit)
+                )
+            }
 
             // Auto-sync after updating
             try {

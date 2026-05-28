@@ -602,9 +602,12 @@ fun AddRecipeDialog(
                                     ) {
                                         TextField(
                                             value = iName,
-                                            onValueChange = {
-                                                ingredients[index] = Triple(it, iAmount, iUnit)
-                                                expandedNameSuggestions = it.length >= 2 && filteredNameSuggestions.isNotEmpty()
+                                            onValueChange = { newValue ->
+                                                val capitalized = newValue.replaceFirstChar { 
+                                                    if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() 
+                                                }
+                                                ingredients[index] = Triple(capitalized, iAmount, iUnit)
+                                                expandedNameSuggestions = capitalized.length >= 2 && filteredNameSuggestions.isNotEmpty()
                                             },
                                             placeholder = { Text("Nazwa", fontSize = 14.sp) },
                                             modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable),
