@@ -162,7 +162,7 @@ fun FriendItem(
                     }
                 }
                 IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Usuń znajomego", tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Default.Close, contentDescription = "Usuń znajomego", tint = Color.Red)
                 }
             }
 

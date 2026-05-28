@@ -2,6 +2,9 @@ package com.example.zlotywidelec.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -22,11 +25,17 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +48,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.zlotywidelec.data.local.dao.IngredientNameAndUnit
 import com.example.zlotywidelec.data.local.dao.RecipeWithIngredients
@@ -296,8 +311,8 @@ fun RecipesScreen(
         AddRecipeDialog(
             suggestions = suggestions,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, instructions, imageUrl, tag, ingredients ->
-                viewModel.addRecipe(name, instructions, imageUrl, tag, ingredients)
+            onConfirm = { name, instructions, imageUrl, videoUrl, tag, ingredients ->
+                viewModel.addRecipe(name, instructions, imageUrl, videoUrl, tag, ingredients)
             }
         )
     }
@@ -331,12 +346,13 @@ fun RecipesScreen(
             initialRecipe = rwI,
             suggestions = suggestions,
             onDismiss = { recipeToEdit = null },
-            onConfirm = { name, instructions, imageUrl, tag, ingredients ->
+            onConfirm = { name, instructions, imageUrl, videoUrl, tag, ingredients ->
                 viewModel.updateRecipe(
                     rwI.recipe.copy(
                         name = name,
                         instructions = instructions,
                         imageUrl = imageUrl,
+                        videoUrl = videoUrl,
                         tag = tag
                     ),
                     ingredients
@@ -352,7 +368,7 @@ fun AddRecipeDialog(
     initialRecipe: RecipeWithIngredients? = null,
     suggestions: List<IngredientNameAndUnit> = emptyList(),
     onDismiss: () -> Unit,
-    onConfirm: (String, String, String, String, List<Triple<String, Double, String>>) -> Unit
+    onConfirm: (String, String, String, String, String, List<Triple<String, Double, String>>) -> Unit
 ) {
     var name by remember { mutableStateOf(initialRecipe?.recipe?.name ?: "") }
     var instructions by remember { mutableStateOf(initialRecipe?.recipe?.instructions ?: "") }
@@ -366,6 +382,16 @@ fun AddRecipeDialog(
             if (!it.startsWith("content://")) it else ""
         } ?: "")
     }
+    var videoUri by remember {
+        mutableStateOf(initialRecipe?.recipe?.videoUrl?.let {
+            if (it.startsWith("content://")) Uri.parse(it) else null
+        })
+    }
+    var remoteVideoUrl by remember {
+        mutableStateOf(initialRecipe?.recipe?.videoUrl?.let {
+            if (!it.startsWith("content://")) it else ""
+        } ?: "")
+    }
     var selectedTag by remember { mutableStateOf(initialRecipe?.recipe?.tag ?: "") }
 
     val context = LocalContext.current
@@ -375,6 +401,15 @@ fun AddRecipeDialog(
         onResult = { uri ->
             if (uri != null) {
                 imageUri = uri
+            }
+        }
+    )
+
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri ->
+            if (uri != null) {
+                videoUri = uri
             }
         }
     )
@@ -478,6 +513,23 @@ fun AddRecipeDialog(
                                 )
                             }
                         }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            videoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Icon(Icons.Default.Videocam, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(if (videoUri != null || remoteVideoUrl.isNotEmpty()) "Wideo wybrane" else "Dodaj wideo")
                     }
                 }
 
@@ -587,9 +639,9 @@ fun AddRecipeDialog(
                                 if (ingredients.size > 1) {
                                     IconButton(onClick = { ingredients.removeAt(index) }) {
                                         Icon(
-                                            Icons.Default.Delete,
+                                            Icons.Default.Close,
                                             contentDescription = "Usuń",
-                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                                            tint = Color.Red.copy(alpha = 0.7f),
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -686,7 +738,8 @@ fun AddRecipeDialog(
                         .filter { it.first.isNotBlank() }
                         .map { Triple(it.first, it.second.replace(",", ".").toDoubleOrNull() ?: 1.0, it.third) }
                     val finalImageUrl = imageUri?.toString() ?: remoteImageUrl
-                    onConfirm(name, instructions, finalImageUrl, selectedTag, finalIngredients)
+                    val finalVideoUrl = videoUri?.toString() ?: remoteVideoUrl
+                    onConfirm(name, instructions, finalImageUrl, finalVideoUrl, selectedTag, finalIngredients)
                     onDismiss()
                 },
                 enabled = name.isNotBlank() && instructions.isNotBlank(),
@@ -716,7 +769,8 @@ fun RecipeItem(
     onEdit: () -> Unit,
     onAddToShoppingList: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var showVideoPlayer by rememberSaveable { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -827,7 +881,7 @@ fun RecipeItem(
                                 Icon(Icons.Default.Edit, contentDescription = "Edytuj", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                             }
                             IconButton(onClick = onDelete) {
-                                Icon(Icons.Default.Delete, contentDescription = "Usuń", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Close, contentDescription = "Usuń", tint = Color.Red, modifier = Modifier.size(25.dp))
                             }
                         }
                     }
@@ -889,6 +943,19 @@ fun RecipeItem(
                         modifier = Modifier.padding(top = 4.dp)
                     )
 
+                    if (recipe.recipe.videoUrl.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedButton(
+                            onClick = { showVideoPlayer = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.PlayCircle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Zobacz wideo", fontWeight = FontWeight.Bold)
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = onAddToShoppingList,
@@ -903,6 +970,96 @@ fun RecipeItem(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Dodaj brakujące do listy", fontWeight = FontWeight.Bold)
                     }
+                }
+            }
+        }
+    }
+
+    if (showVideoPlayer) {
+        VideoPlayerDialog(
+            videoUrl = recipe.recipe.videoUrl,
+            onDismiss = { showVideoPlayer = false }
+        )
+    }
+}
+
+@Composable
+fun VideoPlayerDialog(videoUrl: String, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var isFullscreen by rememberSaveable { mutableStateOf(false) }
+
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(videoUrl)
+            setMediaItem(mediaItem)
+            prepare()
+            playWhenReady = true
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = !isFullscreen,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        Surface(
+            modifier = if (isFullscreen) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(16/9f)
+            },
+            color = Color.Black,
+            shape = if (isFullscreen) RoundedCornerShape(0.dp) else RoundedCornerShape(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            player = exoPlayer
+                            layoutParams = FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                // Close Button
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Zamknij", tint = Color.White)
+                }
+
+                // Fullscreen Toggle Button
+                IconButton(
+                    onClick = { isFullscreen = !isFullscreen },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                        contentDescription = "Pełny ekran",
+                        tint = Color.White
+                    )
                 }
             }
         }

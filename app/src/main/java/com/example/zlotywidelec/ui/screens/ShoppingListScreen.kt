@@ -1,8 +1,10 @@
 package com.example.zlotywidelec.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -50,6 +52,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     val sortOrder by viewModel.sortOrder.collectAsState()
     val filterTags by viewModel.filterTags.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var itemToEdit by remember { mutableStateOf<IngredientEntity?>(null) }
     var showFilterMenu by remember { mutableStateOf(false) }
     var filterHeaderWidth by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
@@ -287,7 +290,8 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                                 ShoppingListItem(
                                     item = item,
                                     onCheckedChange = { viewModel.toggleItemChecked(item) },
-                                    onDelete = { viewModel.deleteItem(item) }
+                                    onDelete = { viewModel.deleteItem(item) },
+                                    onLongClick = { itemToEdit = item }
                                 )
                                 HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
                             }
@@ -304,6 +308,17 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
             onDismiss = { showAddDialog = false },
             onConfirm = { name, amount, unit, tag ->
                 viewModel.addItem(name, amount, unit, tag)
+            }
+        )
+    }
+
+    itemToEdit?.let { item ->
+        AddItemDialog(
+            initialItem = item,
+            suggestions = suggestions,
+            onDismiss = { itemToEdit = null },
+            onConfirm = { name, amount, unit, tag ->
+                viewModel.updateItem(item, name, amount, unit, tag)
             }
         )
     }
@@ -332,15 +347,21 @@ fun EmptyShoppingListMessage() {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ShoppingListItem(
     item: IngredientEntity,
     onCheckedChange: (Boolean) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .combinedClickable(
+                onClick = { onCheckedChange(!item.isChecked) },
+                onLongClick = onLongClick
+            )
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -407,12 +428,13 @@ fun ShoppingListItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddItemDialog(
+    initialItem: IngredientEntity? = null,
     suggestions: List<IngredientNameAndUnit>,
     onDismiss: () -> Unit,
     onConfirm: (String, Double, String, String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var amountStr by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf(initialItem?.name ?: "") }
+    var amountStr by remember { mutableStateOf(initialItem?.let { if (it.amount > 0) (if (it.amount % 1.0 == 0.0) it.amount.toInt().toString() else it.amount.toString()) else "" } ?: "") }
     
     val tagOptions = listOf(
         "warzywa" to "Warzywa",
@@ -428,7 +450,7 @@ fun AddItemDialog(
         "przyprawy" to "Przyprawy",
         "sosy" to "Sosy"
     )
-    var selectedTag by remember { mutableStateOf("") }
+    var selectedTag by remember { mutableStateOf(initialItem?.tag ?: "") }
     
     val prefixOptions = listOf(
         "" to "—",
@@ -443,9 +465,27 @@ fun AddItemDialog(
         "Inne" to "Inne"
     )
     
-    var selectedPrefix by remember { mutableStateOf(prefixOptions[0].first) }
-    var selectedBaseUnit by remember { mutableStateOf("szt.") }
-    var customUnit by remember { mutableStateOf("") }
+    var selectedPrefix by remember {
+        mutableStateOf(initialItem?.let { item ->
+            val unit = item.unit
+            prefixOptions.filter { it.first.isNotEmpty() }.find { unit.startsWith(it.first) && it.first.length < unit.length }?.first
+        } ?: prefixOptions[0].first)
+    }
+    var selectedBaseUnit by remember {
+        mutableStateOf(initialItem?.let { item ->
+            val unit = item.unit
+            val prefixMatch = prefixOptions.filter { it.first.isNotEmpty() }.find { unit.startsWith(it.first) && it.first.length < unit.length }
+            baseUnitOptions.find { it.first == unit || (prefixMatch != null && unit.endsWith(it.first)) }?.first
+        } ?: "szt.")
+    }
+    var customUnit by remember {
+        mutableStateOf(initialItem?.let { item ->
+            val unit = item.unit
+            val prefixMatch = prefixOptions.filter { it.first.isNotEmpty() }.find { unit.startsWith(it.first) && it.first.length < unit.length }
+            val baseMatch = baseUnitOptions.find { it.first == unit || (prefixMatch != null && unit.endsWith(it.first)) }
+            if (baseMatch == null) unit else ""
+        } ?: "")
+    }
     
     var expandedNameSuggestions by remember { mutableStateOf(false) }
     var expandedPrefixDropdown by remember { mutableStateOf(false) }
@@ -486,7 +526,7 @@ fun AddItemDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Dodaj do listy", color = MaterialTheme.colorScheme.onSurface) },
+        title = { Text(if (initialItem == null) "Dodaj do listy" else "Edytuj produkt", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Row 1: Name
@@ -786,7 +826,7 @@ fun AddItemDialog(
                 enabled = name.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary)
             ) {
-                Text("Dodaj")
+                Text(if (initialItem == null) "Dodaj" else "Zapisz")
             }
         },
         dismissButton = {

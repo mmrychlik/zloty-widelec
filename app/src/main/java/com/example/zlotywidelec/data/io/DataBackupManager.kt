@@ -30,7 +30,8 @@ data class AppDataBackup(
 data class RecipeWithIngredientsBackup(
     val recipe: RecipeEntity,
     val ingredients: List<RecipeIngredientEntity>,
-    val localImageFileName: String? = null
+    val localImageFileName: String? = null,
+    val localVideoFileName: String? = null
 )
 
 class DataBackupManager(
@@ -62,14 +63,18 @@ class DataBackupManager(
         }
     }
 
-    suspend fun saveImageFromBytes(data: ByteArray, fileName: String): Uri? = withContext(Dispatchers.IO) {
+    suspend fun saveImageFromBytes(data: ByteArray, fileName: String): Uri? = saveFileFromBytes(data, fileName, "image/jpeg")
+
+    suspend fun saveVideoFromBytes(data: ByteArray, fileName: String): Uri? = saveFileFromBytes(data, fileName, "video/mp4")
+
+    private suspend fun saveFileFromBytes(data: ByteArray, fileName: String, mimeType: String): Uri? = withContext(Dispatchers.IO) {
         val storageUriStr = getPhotoStorageUri() ?: return@withContext null
         val storageUri = Uri.parse(storageUriStr)
         try {
             val treeId = DocumentsContract.getTreeDocumentId(storageUri)
             val parentUri = DocumentsContract.buildDocumentUriUsingTree(storageUri, treeId)
             
-            val fileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, "image/jpeg", fileName) ?: return@withContext null
+            val fileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, mimeType, fileName) ?: return@withContext null
             
             context.contentResolver.openOutputStream(fileUri)?.use { output ->
                 output.write(data)
@@ -81,7 +86,11 @@ class DataBackupManager(
         }
     }
 
-    suspend fun copyImageToInternalStorage(sourceUri: Uri): Uri? = withContext(Dispatchers.IO) {
+    suspend fun copyImageToInternalStorage(sourceUri: Uri): Uri? = copyFileToInternalStorage(sourceUri, "image/jpeg", "recipe_")
+
+    suspend fun copyVideoToInternalStorage(sourceUri: Uri): Uri? = copyFileToInternalStorage(sourceUri, "video/mp4", "video_")
+
+    private suspend fun copyFileToInternalStorage(sourceUri: Uri, mimeType: String, prefix: String): Uri? = withContext(Dispatchers.IO) {
         val storageUriStr = getPhotoStorageUri() ?: return@withContext null
         if (sourceUri.toString().startsWith(storageUriStr)) return@withContext sourceUri
 
@@ -90,8 +99,9 @@ class DataBackupManager(
             val treeId = DocumentsContract.getTreeDocumentId(storageUri)
             val parentUri = DocumentsContract.buildDocumentUriUsingTree(storageUri, treeId)
             
-            val fileName = "recipe_${System.currentTimeMillis()}.jpg"
-            val fileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, "image/jpeg", fileName) ?: return@withContext null
+            val extension = if (mimeType.startsWith("image")) ".jpg" else ".mp4"
+            val fileName = "$prefix${System.currentTimeMillis()}$extension"
+            val fileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, mimeType, fileName) ?: return@withContext null
             
             context.contentResolver.openInputStream(sourceUri)?.use { input ->
                 context.contentResolver.openOutputStream(fileUri)?.use { output ->
@@ -113,12 +123,17 @@ class DataBackupManager(
     ) = withContext(Dispatchers.IO) {
         val userRecipes = if (exportRecipes) {
             recipeDao.getAllUserRecipesSync().map { rwI ->
-                val fileName = if (rwI.recipe.imageUrl.startsWith("content://")) {
+                val imageName = if (rwI.recipe.imageUrl.startsWith("content://")) {
                     Uri.parse(rwI.recipe.imageUrl).lastPathSegment?.let { 
                         if (it.contains(":")) it.substringAfterLast(":") else it
                     } ?: "image_${rwI.recipe.id}.jpg"
                 } else null
-                RecipeWithIngredientsBackup(rwI.recipe, rwI.ingredients, fileName)
+                val videoName = if (rwI.recipe.videoUrl.startsWith("content://")) {
+                    Uri.parse(rwI.recipe.videoUrl).lastPathSegment?.let {
+                        if (it.contains(":")) it.substringAfterLast(":") else it
+                    } ?: "video_${rwI.recipe.id}.mp4"
+                } else null
+                RecipeWithIngredientsBackup(rwI.recipe, rwI.ingredients, imageName, videoName)
             }
         } else null
 
@@ -149,6 +164,17 @@ class DataBackupManager(
                                 // Skip if image cannot be read
                             }
                         }
+                        if (backupRecipe.localVideoFileName != null && backupRecipe.recipe.videoUrl.isNotEmpty()) {
+                            try {
+                                context.contentResolver.openInputStream(Uri.parse(backupRecipe.recipe.videoUrl))?.use { input ->
+                                    zos.putNextEntry(ZipEntry("videos/${backupRecipe.localVideoFileName}"))
+                                    input.copyTo(zos)
+                                    zos.closeEntry()
+                                }
+                            } catch (e: Exception) {
+                                // Skip if video cannot be read
+                            }
+                        }
                     }
                 }
             }
@@ -163,6 +189,7 @@ class DataBackupManager(
             ZipInputStream(inputStream).use { zis ->
                 var backup: AppDataBackup? = null
                 val imageMap = mutableMapOf<String, ByteArray>()
+                val videoMap = mutableMapOf<String, ByteArray>()
                 
                 var entry = zis.nextEntry
                 while (entry != null) {
@@ -178,6 +205,14 @@ class DataBackupManager(
                                 val baos = ByteArrayOutputStream()
                                 zis.copyTo(baos)
                                 imageMap[fileName] = baos.toByteArray()
+                            }
+                        }
+                        entry.name.startsWith("videos/") -> {
+                            val fileName = entry.name.removePrefix("videos/")
+                            if (fileName.isNotEmpty()) {
+                                val baos = ByteArrayOutputStream()
+                                zis.copyTo(baos)
+                                videoMap[fileName] = baos.toByteArray()
                             }
                         }
                     }
@@ -198,25 +233,44 @@ class DataBackupManager(
                 backup.userRecipes?.let { recipes ->
                     recipes.forEach { backupRecipe ->
                         var finalImageUrl = backupRecipe.recipe.imageUrl
-                        if (backupRecipe.localImageFileName != null && storageUri != null) {
-                            val imageData = imageMap[backupRecipe.localImageFileName]
-                            if (imageData != null) {
-                                try {
-                                    val treeId = DocumentsContract.getTreeDocumentId(storageUri)
-                                    val parentUri = DocumentsContract.buildDocumentUriUsingTree(storageUri, treeId)
-                                    val newFileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, "image/jpeg", backupRecipe.localImageFileName)
-                                    if (newFileUri != null) {
-                                        context.contentResolver.openOutputStream(newFileUri)?.use { it.write(imageData) }
-                                        finalImageUrl = newFileUri.toString()
+                        var finalVideoUrl = backupRecipe.recipe.videoUrl
+                        if (storageUri != null) {
+                            if (backupRecipe.localImageFileName != null) {
+                                val imageData = imageMap[backupRecipe.localImageFileName]
+                                if (imageData != null) {
+                                    try {
+                                        val treeId = DocumentsContract.getTreeDocumentId(storageUri)
+                                        val parentUri = DocumentsContract.buildDocumentUriUsingTree(storageUri, treeId)
+                                        val newFileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, "image/jpeg", backupRecipe.localImageFileName)
+                                        if (newFileUri != null) {
+                                            context.contentResolver.openOutputStream(newFileUri)?.use { it.write(imageData) }
+                                            finalImageUrl = newFileUri.toString()
+                                        }
+                                    } catch (e: Exception) {
+                                        // Fallback to original URL if copying fails
                                     }
-                                } catch (e: Exception) {
-                                    // Fallback to original URL if copying fails
+                                }
+                            }
+                            if (backupRecipe.localVideoFileName != null) {
+                                val videoData = videoMap[backupRecipe.localVideoFileName]
+                                if (videoData != null) {
+                                    try {
+                                        val treeId = DocumentsContract.getTreeDocumentId(storageUri)
+                                        val parentUri = DocumentsContract.buildDocumentUriUsingTree(storageUri, treeId)
+                                        val newFileUri = DocumentsContract.createDocument(context.contentResolver, parentUri, "video/mp4", backupRecipe.localVideoFileName)
+                                        if (newFileUri != null) {
+                                            context.contentResolver.openOutputStream(newFileUri)?.use { it.write(videoData) }
+                                            finalVideoUrl = newFileUri.toString()
+                                        }
+                                    } catch (e: Exception) {
+                                        // Fallback to original URL if copying fails
+                                    }
                                 }
                             }
                         }
 
                         recipeDao.insertRecipeWithIngredients(
-                            backupRecipe.recipe.copy(id = 0, imageUrl = finalImageUrl),
+                            backupRecipe.recipe.copy(id = 0, imageUrl = finalImageUrl, videoUrl = finalVideoUrl),
                             backupRecipe.ingredients.map { it.copy(id = 0, recipeId = 0) }
                         )
                     }

@@ -119,7 +119,7 @@ class SettingsViewModel(
                     }
                     val finalRecipes = recipeDao.getAllUserRecipesSync()
                     
-                    // Upload images for user recipes
+                    // Upload images and videos for user recipes
                     finalRecipes.forEach { rwI ->
                         if (rwI.recipe.imageUrl.startsWith("content://")) {
                             try {
@@ -127,6 +127,17 @@ class SettingsViewModel(
                                 val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "img_${rwI.recipe.uuid}.jpg"
                                 googleDriveService.context.contentResolver.openInputStream(uri)?.use { input ->
                                     syncManager.uploadImage(fileName, input.readBytes())
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                        if (rwI.recipe.videoUrl.startsWith("content://")) {
+                            try {
+                                val uri = Uri.parse(rwI.recipe.videoUrl)
+                                val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "vid_${rwI.recipe.uuid}.mp4"
+                                googleDriveService.context.contentResolver.openInputStream(uri)?.use { input ->
+                                    syncManager.uploadFile(fileName, input.readBytes(), "video/mp4")
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()
@@ -187,6 +198,8 @@ class SettingsViewModel(
                             
                             if (existing == null || remote.recipe.lastUpdated > existing.lastUpdated) {
                                 var finalImageUrl = remote.recipe.imageUrl
+                                var finalVideoUrl = remote.recipe.videoUrl
+
                                 // If recipe has image, try to download it from friend's Drive
                                 if (finalImageUrl.startsWith("content://")) {
                                     val fileName = Uri.parse(finalImageUrl).lastPathSegment?.substringAfterLast("/") ?: "img_${remote.recipe.uuid}.jpg"
@@ -199,13 +212,26 @@ class SettingsViewModel(
                                     }
                                 }
 
+                                // If recipe has video, try to download it from friend's Drive
+                                if (finalVideoUrl.startsWith("content://")) {
+                                    val fileName = Uri.parse(finalVideoUrl).lastPathSegment?.substringAfterLast("/") ?: "vid_${remote.recipe.uuid}.mp4"
+                                    val videoData = syncManager.downloadFile(fileName, "video/mp4", friend.email)
+                                    if (videoData != null) {
+                                        val localUri = backupManager.saveVideoFromBytes(videoData, fileName)
+                                        if (localUri != null) {
+                                            finalVideoUrl = localUri.toString()
+                                        }
+                                    }
+                                }
+
                                 if (existing == null) {
                                     recipeDao.insertRecipeWithIngredients(
                                         remote.recipe.copy(
                                             id = 0,
                                             isUserCreated = false,
                                             ownerName = friend.name.ifBlank { friend.email },
-                                            imageUrl = finalImageUrl
+                                            imageUrl = finalImageUrl,
+                                            videoUrl = finalVideoUrl
                                         ),
                                         remote.ingredients
                                     )
@@ -216,7 +242,8 @@ class SettingsViewModel(
                                             id = existing.id,
                                             isUserCreated = false,
                                             ownerName = friend.name.ifBlank { friend.email },
-                                            imageUrl = finalImageUrl
+                                            imageUrl = finalImageUrl,
+                                            videoUrl = finalVideoUrl
                                         ),
                                         remote.ingredients
                                     )

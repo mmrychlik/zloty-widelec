@@ -57,14 +57,15 @@ class DriveSyncManager(private val googleDriveService: GoogleDriveService) {
         }
     }
 
-    suspend fun uploadImage(fileName: String, content: ByteArray): String? = withContext(Dispatchers.IO) {
+    suspend fun uploadFile(fileName: String, content: ByteArray, mimeType: String): String? = withContext(Dispatchers.IO) {
         val driveService = googleDriveService.getDriveService() ?: return@withContext null
         val rootId = getOrCreateRootFolder() ?: return@withContext null
-        val imagesFolderId = getOrCreateSubFolder(rootId, "images") ?: return@withContext null
+        val targetFolderName = if (mimeType.startsWith("image")) "images" else "videos"
+        val folderId = getOrCreateSubFolder(rootId, targetFolderName) ?: return@withContext null
 
         try {
-            val contentStream = ByteArrayContent("image/jpeg", content)
-            val query = "name = '$fileName' and '$imagesFolderId' in parents and trashed = false"
+            val contentStream = ByteArrayContent(mimeType, content)
+            val query = "name = '$fileName' and '$folderId' in parents and trashed = false"
             val existingFiles = driveService.files().list().setQ(query).execute().files
 
             if (existingFiles.isNotEmpty()) {
@@ -73,18 +74,18 @@ class DriveSyncManager(private val googleDriveService: GoogleDriveService) {
             } else {
                 val fileMetadata = File().apply {
                     name = fileName
-                    parents = listOf(imagesFolderId)
+                    parents = listOf(folderId)
                 }
                 val newFile = driveService.files().create(fileMetadata, contentStream).setFields("id").execute()
                 newFile.id
             }
         } catch (e: Exception) {
-            Log.e("DriveSyncManager", "Error uploading image $fileName", e)
+            Log.e("DriveSyncManager", "Error uploading file $fileName", e)
             null
         }
     }
 
-    suspend fun downloadImage(fileName: String, ownerEmail: String? = null): ByteArray? = withContext(Dispatchers.IO) {
+    suspend fun downloadFile(fileName: String, mimeType: String, ownerEmail: String? = null): ByteArray? = withContext(Dispatchers.IO) {
         val driveService = googleDriveService.getDriveService() ?: return@withContext null
         try {
             val rootId = if (ownerEmail == null) {
@@ -93,8 +94,9 @@ class DriveSyncManager(private val googleDriveService: GoogleDriveService) {
                 getFriendRootFolder(ownerEmail)
             } ?: return@withContext null
             
-            val imagesFolderId = getOrCreateSubFolder(rootId, "images") ?: return@withContext null
-            val query = "name = '$fileName' and '$imagesFolderId' in parents and trashed = false"
+            val targetFolderName = if (mimeType.startsWith("image")) "images" else "videos"
+            val folderId = getOrCreateSubFolder(rootId, targetFolderName) ?: return@withContext null
+            val query = "name = '$fileName' and '$folderId' in parents and trashed = false"
 
             val files = driveService.files().list().setQ(query).execute().files
             if (files.isEmpty()) return@withContext null
@@ -103,10 +105,14 @@ class DriveSyncManager(private val googleDriveService: GoogleDriveService) {
             driveService.files().get(files[0].id).executeMediaAndDownloadTo(outputStream)
             outputStream.toByteArray()
         } catch (e: Exception) {
-            Log.e("DriveSyncManager", "Error downloading image $fileName", e)
+            Log.e("DriveSyncManager", "Error downloading file $fileName", e)
             null
         }
     }
+
+    suspend fun uploadImage(fileName: String, content: ByteArray): String? = uploadFile(fileName, content, "image/jpeg")
+
+    suspend fun downloadImage(fileName: String, ownerEmail: String? = null): ByteArray? = downloadFile(fileName, "image/jpeg", ownerEmail)
 
     suspend fun getOrCreateRootFolder(): String? = withContext(Dispatchers.IO) {
         val driveService = googleDriveService.getDriveService() ?: return@withContext null

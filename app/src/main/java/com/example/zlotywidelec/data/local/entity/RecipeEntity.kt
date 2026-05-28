@@ -13,6 +13,7 @@ data class RecipeEntity(
     val uuid: String = UUID.randomUUID().toString(),
     val name: String,
     val imageUrl: String = "",
+    val videoUrl: String = "",
     val instructions: String,
     val tag: String = "",
     val isUserCreated: Boolean = false,

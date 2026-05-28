@@ -134,16 +134,33 @@ class ShoppingViewModel(
             )
             
             // Auto-sync
-            try {
-                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
-                syncManager.uploadCategoryData(
-                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
-                    allShoppingItems,
-                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
+            syncShopping()
+        }
+    }
+
+    fun updateItem(item: IngredientEntity, name: String, amount: Double, unit: String, tag: String) {
+        viewModelScope.launch {
+            val capitalizedName = name.trim().replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
             }
+            ingredientDao.updateIngredient(
+                item.copy(name = capitalizedName, amount = amount, unit = unit, tag = tag)
+            )
+            
+            syncShopping()
+        }
+    }
+
+    private suspend fun syncShopping() {
+        try {
+            val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
+            syncManager.uploadCategoryData(
+                com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
+                allShoppingItems,
+                kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -152,16 +169,7 @@ class ShoppingViewModel(
             ingredientDao.updateIngredient(item.copy(isChecked = !item.isChecked))
             
             // Auto-sync
-            try {
-                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
-                syncManager.uploadCategoryData(
-                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
-                    allShoppingItems,
-                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            syncShopping()
         }
     }
 
@@ -170,16 +178,7 @@ class ShoppingViewModel(
             ingredientDao.deleteIngredient(item)
             
             // Auto-sync
-            try {
-                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
-                syncManager.uploadCategoryData(
-                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
-                    allShoppingItems,
-                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            syncShopping()
         }
     }
 
@@ -238,16 +237,7 @@ class ShoppingViewModel(
             }
 
             // Auto-sync
-            try {
-                val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
-                syncManager.uploadCategoryData(
-                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
-                    allShoppingItems,
-                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
-                )
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            syncShopping()
         }
     }
 

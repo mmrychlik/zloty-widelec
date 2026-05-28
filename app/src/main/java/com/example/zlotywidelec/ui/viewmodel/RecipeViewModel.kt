@@ -159,17 +159,23 @@ class RecipeViewModel(
         }
     }
 
-    fun addRecipe(name: String, instructions: String, imageUrl: String, tag: String, ingredients: List<Triple<String, Double, String>>) {
+    fun addRecipe(name: String, instructions: String, imageUrl: String, videoUrl: String, tag: String, ingredients: List<Triple<String, Double, String>>) {
         viewModelScope.launch {
             val finalImageUrl = if (imageUrl.startsWith("content://")) {
                 backupManager.copyImageToInternalStorage(Uri.parse(imageUrl))?.toString() ?: imageUrl
             } else {
                 imageUrl
             }
+            val finalVideoUrl = if (videoUrl.startsWith("content://")) {
+                backupManager.copyVideoToInternalStorage(Uri.parse(videoUrl))?.toString() ?: videoUrl
+            } else {
+                videoUrl
+            }
             val recipe = RecipeEntity(
                 name = name,
                 instructions = instructions,
                 imageUrl = finalImageUrl,
+                videoUrl = finalVideoUrl,
                 tag = tag,
                 isUserCreated = true,
                 lastUpdated = System.currentTimeMillis()
@@ -195,7 +201,16 @@ class RecipeViewModel(
                     }
                 }
 
-                // 2. Upload recipe list
+                // 2. Upload video if it's local
+                if (finalVideoUrl.startsWith("content://")) {
+                    val uri = Uri.parse(finalVideoUrl)
+                    val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "vid_${recipe.uuid}.mp4"
+                    backupManager.context.contentResolver.openInputStream(uri)?.use { input ->
+                        syncManager.uploadFile(fileName, input.readBytes(), "video/mp4")
+                    }
+                }
+
+                // 3. Upload recipe list
                 val allUserRecipes = recipeDao.getAllUserRecipesSync()
                 syncManager.uploadCategoryData(
                     com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
@@ -233,8 +248,14 @@ class RecipeViewModel(
             } else {
                 recipe.imageUrl
             }
+            val finalVideoUrl = if (recipe.videoUrl.startsWith("content://")) {
+                backupManager.copyVideoToInternalStorage(Uri.parse(recipe.videoUrl))?.toString() ?: recipe.videoUrl
+            } else {
+                recipe.videoUrl
+            }
             val updatedRecipe = recipe.copy(
                 imageUrl = finalImageUrl,
+                videoUrl = finalVideoUrl,
                 lastUpdated = System.currentTimeMillis()
             )
             val ingredientEntities = ingredients.map { (iName, amount, iUnit) ->
@@ -258,7 +279,16 @@ class RecipeViewModel(
                     }
                 }
 
-                // 2. Upload recipe list
+                // 2. Upload video if it's local
+                if (finalVideoUrl.startsWith("content://")) {
+                    val uri = Uri.parse(finalVideoUrl)
+                    val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "vid_${updatedRecipe.uuid}.mp4"
+                    backupManager.context.contentResolver.openInputStream(uri)?.use { input ->
+                        syncManager.uploadFile(fileName, input.readBytes(), "video/mp4")
+                    }
+                }
+
+                // 3. Upload recipe list
                 val allUserRecipes = recipeDao.getAllUserRecipesSync()
                 syncManager.uploadCategoryData(
                     com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
