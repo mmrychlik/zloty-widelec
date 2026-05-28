@@ -115,16 +115,30 @@ class FridgeViewModel(
             val capitalizedName = name.trim().replaceFirstChar {
                 if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
             }
-            ingredientDao.insertIngredient(
-                IngredientEntity(
-                    name = capitalizedName,
-                    amount = amount,
-                    unit = unit,
-                    tag = tag,
-                    isInFridge = true,
-                    addedAt = System.currentTimeMillis()
+            
+            val fridgeItems = ingredientDao.getAllFridgeItemsSync()
+            val normalizedName = capitalizedName.normalize()
+            val existing = fridgeItems.find { it.name.normalize() == normalizedName }
+
+            if (existing != null) {
+                val existingAmountBase = convertAmountToBase(existing.amount, existing.unit)
+                val addedAmountBase = convertAmountToBase(amount, unit)
+                val totalAmountBase = existingAmountBase + addedAmountBase
+                val (newAmount, newUnit) = normalizeBaseToBestUnit(totalAmountBase, existing.unit)
+                ingredientDao.updateIngredient(existing.copy(amount = newAmount, unit = newUnit))
+            } else {
+                val (normalizedAmount, normalizedUnit) = normalizeBaseToBestUnit(convertAmountToBase(amount, unit), unit)
+                ingredientDao.insertIngredient(
+                    IngredientEntity(
+                        name = capitalizedName,
+                        amount = normalizedAmount,
+                        unit = normalizedUnit,
+                        tag = tag,
+                        isInFridge = true,
+                        addedAt = System.currentTimeMillis()
+                    )
                 )
-            )
+            }
             // Also save as suggestion
             ingredientDao.insertProductSuggestion(
                 ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit, tag = tag)
@@ -142,6 +156,41 @@ class FridgeViewModel(
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun normalizeBaseToBestUnit(baseAmount: Double, originalUnit: String): Pair<Double, String> {
+        val unit = originalUnit.lowercase().trim()
+        return when {
+            unit.endsWith("g") || unit.endsWith("kg") || unit.endsWith("dag") -> {
+                if (baseAmount >= 1000.0) (baseAmount / 1000.0) to "kg"
+                else if (baseAmount >= 100.0 && unit.endsWith("dag")) (baseAmount / 10.0) to "dag"
+                else baseAmount to "g"
+            }
+            unit.endsWith("l") || unit.endsWith("ml") -> {
+                if (baseAmount >= 1.0) baseAmount to "l"
+                else (baseAmount * 1000.0) to "ml"
+            }
+            else -> baseAmount to originalUnit
+        }
+    }
+
+    private fun convertAmountToBase(amount: Double, unit: String): Double {
+        return when {
+            unit.endsWith("kg") -> amount * 1000.0
+            unit.endsWith("dag") -> amount * 10.0
+            unit.endsWith("g") && !unit.endsWith("dag") && !unit.endsWith("kg") -> amount
+            unit.endsWith("ml") -> amount / 1000.0
+            unit.endsWith("l") && !unit.endsWith("ml") -> amount
+            else -> amount
+        }
+    }
+
+    private fun String.normalize(): String {
+        val temp = java.text.Normalizer.normalize(this, java.text.Normalizer.Form.NFD)
+        return "\\p{InCombiningDiacriticalMarks}+".toRegex()
+            .replace(temp, "")
+            .lowercase()
+            .trim()
     }
 
     fun deleteItem(item: IngredientEntity) {

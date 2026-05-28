@@ -308,6 +308,65 @@ class RecipeViewModel(
         }
     }
 
+    fun useRecipeIngredients(ingredients: List<RecipeIngredientEntity>) {
+        viewModelScope.launch {
+            val currentFridge = ingredientDao.getAllFridgeItemsSync()
+            ingredients.forEach { req ->
+                val normalizedReqName = req.name.normalize()
+                var remainingToSubtract = convertAmountToBase(req.amount, req.unit)
+                
+                // Find all fridge items that match the name
+                val matches = currentFridge.filter { it.name.normalize() == normalizedReqName }
+                
+                for (item in matches) {
+                    if (remainingToSubtract <= 0) break
+                    
+                    val itemAmountBase = convertAmountToBase(item.amount, item.unit)
+                    
+                    if (itemAmountBase <= remainingToSubtract + 0.001) { // Add small epsilon for floating point
+                        // Use up this item completely
+                        remainingToSubtract -= itemAmountBase
+                        ingredientDao.deleteIngredient(item)
+                    } else {
+                        // Use part of this item
+                        val newItemAmountBase = itemAmountBase - remainingToSubtract
+                        val (newAmount, newUnit) = normalizeBaseToBestUnit(newItemAmountBase, item.unit)
+                        ingredientDao.updateIngredient(item.copy(amount = newAmount, unit = newUnit))
+                        remainingToSubtract = 0.0
+                    }
+                }
+            }
+            
+            // Auto-sync after updating fridge
+            try {
+                val allFridgeItems = ingredientDao.getAllFridgeItemsSync()
+                syncManager.uploadCategoryData(
+                    com.example.zlotywidelec.data.sync.DriveSyncManager.Category.FRIDGE,
+                    allFridgeItems,
+                    kotlinx.serialization.builtins.ListSerializer(IngredientEntity.serializer())
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun normalizeBaseToBestUnit(baseAmount: Double, originalUnit: String): Pair<Double, String> {
+        val unit = originalUnit.lowercase().trim()
+        return when {
+            unit.endsWith("g") || unit.endsWith("kg") || unit.endsWith("dag") -> {
+                if (baseAmount >= 1000.0) (baseAmount / 1000.0) to "kg"
+                else if (baseAmount >= 100.0 && unit.endsWith("dag")) (baseAmount / 10.0) to "dag"
+                else baseAmount to "g"
+            }
+            unit.endsWith("l") || unit.endsWith("ml") -> {
+                if (baseAmount >= 1.0) baseAmount to "l"
+                else (baseAmount * 1000.0) to "ml"
+            }
+            else -> baseAmount to originalUnit
+        }
+    }
+
     private fun filterAndSortRecipes(
         recipes: List<RecipeWithIngredients>,
         query: String,

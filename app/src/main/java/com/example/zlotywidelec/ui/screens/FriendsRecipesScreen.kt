@@ -25,7 +25,8 @@ import com.example.zlotywidelec.ui.viewmodel.SettingsViewModel
 fun FriendsRecipesScreen(
     viewModel: RecipeViewModel,
     settingsViewModel: SettingsViewModel,
-    onAddToShoppingList: (List<RecipeIngredientEntity>) -> Unit
+    onAddToShoppingList: (List<RecipeIngredientEntity>) -> Unit,
+    onUseFromFridge: (List<RecipeIngredientEntity>) -> Unit
 ) {
     val friends by settingsViewModel.friends.collectAsState()
     val userAccount by settingsViewModel.userAccount.collectAsState()

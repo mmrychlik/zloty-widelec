@@ -63,7 +63,8 @@ import com.example.zlotywidelec.ui.viewmodel.RecipeViewModel
 @Composable
 fun RecipesScreen(
     viewModel: RecipeViewModel,
-    onAddToShoppingList: (List<RecipeIngredientEntity>) -> Unit
+    onAddToShoppingList: (List<RecipeIngredientEntity>) -> Unit,
+    onUseFromFridge: (List<RecipeIngredientEntity>) -> Unit
 ) {
     val recipes by viewModel.allFilteredRecipes.collectAsState()
     val availability by viewModel.recipeAvailability.collectAsState()
@@ -296,7 +297,8 @@ fun RecipesScreen(
                             getFridgeAmount = { name, unit -> viewModel.getFridgeAmountForIngredient(name, unit) },
                             onDelete = { recipeToDelete = recipe.recipe },
                             onEdit = { recipeToEdit = recipe },
-                            onAddToShoppingList = { onAddToShoppingList(recipe.ingredients) }
+                            onAddToShoppingList = { onAddToShoppingList(recipe.ingredients) },
+                            onUseFromFridge = { onUseFromFridge(recipe.ingredients) }
                         )
                     }
                 }
@@ -761,7 +763,8 @@ fun RecipeItem(
     getFridgeAmount: (String, String) -> Double,
     onDelete: () -> Unit,
     onEdit: () -> Unit,
-    onAddToShoppingList: () -> Unit
+    onAddToShoppingList: () -> Unit,
+    onUseFromFridge: () -> Unit
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var showVideoPlayer by rememberSaveable { mutableStateOf(false) }
@@ -947,6 +950,24 @@ fun RecipeItem(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
+                    
+                    if (availabilityPercent > 0) {
+                        Button(
+                            onClick = onUseFromFridge,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Kitchen, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Zużyj składniki z lodówki", fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
                     Button(
                         onClick = onAddToShoppingList,
                         modifier = Modifier.fillMaxWidth(),

@@ -338,7 +338,11 @@ fun ZlotyWidelecApp(
                         viewModel = recipeViewModel,
                         onAddToShoppingList = { ingredients: List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity> ->
                             shoppingViewModel.addIngredientsFromRecipe(ingredients)
-                            currentDestination = AppDestinations.SHOPPING_LIST
+                            settingsViewModel.showMessage("Dodano brakujące składniki do listy")
+                        },
+                        onUseFromFridge = { ingredients ->
+                            recipeViewModel.useRecipeIngredients(ingredients)
+                            settingsViewModel.showMessage("Zużyto składniki z lodówki")
                         }
                     )
                     AppDestinations.FRIENDS_RECIPES -> FriendsRecipesScreen(
@@ -346,7 +350,11 @@ fun ZlotyWidelecApp(
                         settingsViewModel = settingsViewModel,
                         onAddToShoppingList = { ingredients: List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity> ->
                             shoppingViewModel.addIngredientsFromRecipe(ingredients)
-                            currentDestination = AppDestinations.SHOPPING_LIST
+                            settingsViewModel.showMessage("Dodano brakujące składniki do listy")
+                        },
+                        onUseFromFridge = { ingredients ->
+                            recipeViewModel.useRecipeIngredients(ingredients)
+                            settingsViewModel.showMessage("Zużyto składniki z lodówki")
                         }
                     )
                     AppDestinations.SETTINGS -> SettingsScreen(

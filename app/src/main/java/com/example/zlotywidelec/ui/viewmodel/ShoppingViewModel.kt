@@ -133,9 +133,24 @@ class ShoppingViewModel(
             val capitalizedName = name.trim().replaceFirstChar {
                 if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
             }
-            ingredientDao.insertIngredient(
-                IngredientEntity(name = capitalizedName, amount = amount, unit = unit, tag = tag)
-            )
+            
+            val shoppingItems = ingredientDao.getAllShoppingItemsSync()
+            val normalizedName = capitalizedName.normalize()
+            val existing = shoppingItems.find { it.name.normalize() == normalizedName && !it.isChecked }
+
+            if (existing != null) {
+                val existingAmountBase = convertAmountToBase(existing.amount, existing.unit)
+                val addedAmountBase = convertAmountToBase(amount, unit)
+                val totalAmountBase = existingAmountBase + addedAmountBase
+                val (newAmount, newUnit) = normalizeBaseToBestUnit(totalAmountBase, existing.unit)
+                ingredientDao.updateIngredient(existing.copy(amount = newAmount, unit = newUnit))
+            } else {
+                val (normalizedAmount, normalizedUnit) = normalizeBaseToBestUnit(convertAmountToBase(amount, unit), unit)
+                ingredientDao.insertIngredient(
+                    IngredientEntity(name = capitalizedName, amount = normalizedAmount, unit = normalizedUnit, tag = tag)
+                )
+            }
+            
             // Also save as suggestion
             ingredientDao.insertProductSuggestion(
                 ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit, tag = tag)
@@ -199,7 +214,42 @@ class ShoppingViewModel(
 
     fun moveCheckedToFridge() {
         viewModelScope.launch {
-            ingredientDao.moveCheckedToFridge(System.currentTimeMillis())
+            val checkedItems = ingredientDao.getAllShoppingItemsSync().filter { it.isChecked }
+            val fridgeItems = ingredientDao.getAllFridgeItemsSync()
+            val timestamp = System.currentTimeMillis()
+
+            checkedItems.forEach { shoppingItem ->
+                val normalizedName = shoppingItem.name.normalize()
+                // Find any matching item in fridge by name, we'll merge and normalize units
+                val existingInFridge = fridgeItems.find { 
+                    it.name.normalize() == normalizedName 
+                }
+
+                if (existingInFridge != null) {
+                    val baseExisting = convertAmountToBase(existingInFridge.amount, existingInFridge.unit)
+                    val baseAdded = convertAmountToBase(shoppingItem.amount, shoppingItem.unit)
+                    val (newAmount, newUnit) = normalizeBaseToBestUnit(baseExisting + baseAdded, existingInFridge.unit)
+                    
+                    ingredientDao.updateIngredient(existingInFridge.copy(
+                        amount = newAmount,
+                        unit = newUnit,
+                        addedAt = timestamp
+                    ))
+                    ingredientDao.deleteIngredient(shoppingItem)
+                } else {
+                    val (normalizedAmount, normalizedUnit) = normalizeBaseToBestUnit(
+                        convertAmountToBase(shoppingItem.amount, shoppingItem.unit), 
+                        shoppingItem.unit
+                    )
+                    ingredientDao.updateIngredient(shoppingItem.copy(
+                        amount = normalizedAmount,
+                        unit = normalizedUnit,
+                        isInFridge = true,
+                        isChecked = false,
+                        addedAt = timestamp
+                    ))
+                }
+            }
             
             // Auto-sync
             try {
@@ -226,33 +276,58 @@ class ShoppingViewModel(
     fun addIngredientsFromRecipe(ingredients: List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity>) {
         viewModelScope.launch {
             val fridgeItems = ingredientDao.getAllFridgeItemsSync()
+            val shoppingItems = ingredientDao.getAllShoppingItemsSync()
             
             ingredients.forEach { ri ->
                 val normalizedName = ri.name.normalize()
-                val matches = fridgeItems.filter { it.name.normalize() == normalizedName }
+                val matchesFridge = fridgeItems.filter { it.name.normalize() == normalizedName }
                 
-                val amountInFridgeBase = matches.sumOf { convertAmountToBase(it.amount, it.unit) }
+                val amountInFridgeBase = matchesFridge.sumOf { convertAmountToBase(it.amount, it.unit) }
                 val requiredAmountBase = convertAmountToBase(ri.amount, ri.unit)
                 
                 val missingAmountBase = requiredAmountBase - amountInFridgeBase
                 
                 if (missingAmountBase > 0) {
-                    val missingAmountInRecipeUnit = convertBaseToUnit(missingAmountBase, ri.unit)
+                    val matchShopping = shoppingItems.find { it.name.normalize() == normalizedName && !it.isChecked }
                     
-                    ingredientDao.insertIngredient(
-                        com.example.zlotywidelec.data.local.entity.IngredientEntity(
-                            name = ri.name,
-                            amount = missingAmountInRecipeUnit,
-                            unit = ri.unit,
-                            tag = "",
-                            isInFridge = false
+                    if (matchShopping != null) {
+                        val existingAmountBase = convertAmountToBase(matchShopping.amount, matchShopping.unit)
+                        val totalAmountBase = existingAmountBase + missingAmountBase
+                        val (newAmount, newUnit) = normalizeBaseToBestUnit(totalAmountBase, matchShopping.unit)
+                        ingredientDao.updateIngredient(matchShopping.copy(amount = newAmount, unit = newUnit))
+                    } else {
+                        val (normalizedAmount, normalizedUnit) = normalizeBaseToBestUnit(missingAmountBase, ri.unit)
+                        ingredientDao.insertIngredient(
+                            com.example.zlotywidelec.data.local.entity.IngredientEntity(
+                                name = ri.name,
+                                amount = normalizedAmount,
+                                unit = normalizedUnit,
+                                tag = "",
+                                isInFridge = false
+                            )
                         )
-                    )
+                    }
                 }
             }
 
             // Auto-sync
             syncShopping()
+        }
+    }
+
+    private fun normalizeBaseToBestUnit(baseAmount: Double, originalUnit: String): Pair<Double, String> {
+        val unit = originalUnit.lowercase().trim()
+        return when {
+            unit.endsWith("g") || unit.endsWith("kg") || unit.endsWith("dag") -> {
+                if (baseAmount >= 1000.0) (baseAmount / 1000.0) to "kg"
+                else if (baseAmount >= 100.0 && unit.endsWith("dag")) (baseAmount / 10.0) to "dag"
+                else baseAmount to "g"
+            }
+            unit.endsWith("l") || unit.endsWith("ml") -> {
+                if (baseAmount >= 1.0) baseAmount to "l"
+                else (baseAmount * 1000.0) to "ml"
+            }
+            else -> baseAmount to originalUnit
         }
     }
 
