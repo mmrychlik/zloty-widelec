@@ -55,6 +55,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     var showFilterMenu by remember { mutableStateOf(false) }
     var filterHeaderWidth by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val tagOptions = listOf(
         "warzywa" to "Warzywa",
@@ -89,7 +90,13 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     ExtendedFloatingActionButton(
-                        onClick = { viewModel.deleteCheckedItems() },
+                        onClick = { 
+                            viewModel.deleteCheckedItems()
+                            android.media.MediaPlayer.create(context, com.example.zlotywidelec.R.raw.dragon_studio_cash_register_kaching_376867)?.apply {
+                                setOnCompletionListener { release() }
+                                start()
+                            }
+                        },
                         containerColor = MaterialTheme.colorScheme.secondary,
                         contentColor = MaterialTheme.colorScheme.onSecondary,
                         icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Wyczyść zaznaczone") },
