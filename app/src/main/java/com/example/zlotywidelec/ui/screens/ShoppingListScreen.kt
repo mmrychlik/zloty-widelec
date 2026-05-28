@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Kitchen
@@ -84,8 +85,16 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                         onClick = { viewModel.moveCheckedToFridge() },
                         containerColor = MaterialTheme.colorScheme.secondary,
                         contentColor = MaterialTheme.colorScheme.onSecondary,
-                        icon = { Icon(Icons.Default.Kitchen, contentDescription = "Add to fridge") },
+                        icon = { Icon(Icons.Default.Kitchen, contentDescription = "Dodaj do lodówki") },
                         text = { Text("Do lodówki") }
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    ExtendedFloatingActionButton(
+                        onClick = { viewModel.deleteCheckedItems() },
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary,
+                        icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Wyczyść zaznaczone") },
+                        text = { Text("Kupione") }
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                 }

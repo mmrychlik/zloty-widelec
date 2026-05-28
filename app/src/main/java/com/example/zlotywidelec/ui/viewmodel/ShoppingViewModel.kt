@@ -182,6 +182,13 @@ class ShoppingViewModel(
         }
     }
 
+    fun deleteCheckedItems() {
+        viewModelScope.launch {
+            ingredientDao.deleteCheckedShoppingItems()
+            syncShopping()
+        }
+    }
+
     fun moveCheckedToFridge() {
         viewModelScope.launch {
             ingredientDao.moveCheckedToFridge(System.currentTimeMillis())

@@ -25,6 +25,9 @@ interface IngredientDao {
     @Query("UPDATE ingredients SET isInFridge = 1, isChecked = 0, addedAt = :timestamp WHERE isChecked = 1 AND isInFridge = 0")
     suspend fun moveCheckedToFridge(timestamp: Long = System.currentTimeMillis())
 
+    @Query("DELETE FROM ingredients WHERE isChecked = 1 AND isInFridge = 0")
+    suspend fun deleteCheckedShoppingItems()
+
     @Query("SELECT DISTINCT name, unit, tag FROM ingredients ORDER BY name ASC")
     fun getAllUniqueIngredients(): Flow<List<IngredientNameAndUnit>>
 
