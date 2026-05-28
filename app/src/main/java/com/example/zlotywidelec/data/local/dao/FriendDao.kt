@@ -4,6 +4,9 @@ import androidx.room.*
 import com.example.zlotywidelec.data.local.entity.FriendEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * DAO for managing friends and their associated information.
+ */
 @Dao
 interface FriendDao {
     @Query("SELECT * FROM friends ORDER BY email ASC")

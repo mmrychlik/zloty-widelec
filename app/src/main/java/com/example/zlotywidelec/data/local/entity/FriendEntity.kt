@@ -3,6 +3,9 @@ package com.example.zlotywidelec.data.local.entity
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+/**
+ * Entity representing a friend in the database.
+ */
 @Entity(tableName = "friends")
 data class FriendEntity(
     @PrimaryKey val email: String,

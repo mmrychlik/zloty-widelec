@@ -18,6 +18,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel for managing application settings and data synchronization.
+ * Handles dark mode, Google Drive synchronization, data backup (export/import), and clearing local data.
+ */
 class SettingsViewModel(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,
@@ -409,6 +413,9 @@ class SettingsViewModel(
     }
 }
 
+/**
+ * Factory for creating [SettingsViewModel] with required dependencies.
+ */
 class SettingsViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,

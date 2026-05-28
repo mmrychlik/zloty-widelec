@@ -14,6 +14,9 @@ import com.google.api.services.drive.DriveScopes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * Service to manage Google Drive authentication and API access.
+ */
 class GoogleDriveService(val context: Context) {
 
     private val _userAccount = MutableStateFlow<GoogleSignInAccount?>(GoogleSignIn.getLastSignedInAccount(context))

@@ -1,6 +1,5 @@
 package com.example.zlotywidelec.ui.screens
 
-import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -21,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.FilterAlt
@@ -42,9 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,18 +48,22 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.zlotywidelec.data.local.dao.IngredientNameAndUnit
 import com.example.zlotywidelec.data.local.dao.RecipeWithIngredients
+import com.example.zlotywidelec.data.local.entity.RecipeEntity
+import com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity
 import com.example.zlotywidelec.ui.viewmodel.RecipeSortOrder
 import com.example.zlotywidelec.ui.viewmodel.RecipeViewModel
 
+// Main recipes list screen
 @Composable
 fun RecipesScreen(
     viewModel: RecipeViewModel,
-    onAddToShoppingList: (List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity>) -> Unit
+    onAddToShoppingList: (List<RecipeIngredientEntity>) -> Unit
 ) {
     val recipes by viewModel.allFilteredRecipes.collectAsState()
     val availability by viewModel.recipeAvailability.collectAsState()
@@ -75,7 +75,7 @@ fun RecipesScreen(
     
     var showAddDialog by remember { mutableStateOf(false) }
     var recipeToEdit by remember { mutableStateOf<RecipeWithIngredients?>(null) }
-    var recipeToDelete by remember { mutableStateOf<com.example.zlotywidelec.data.local.entity.RecipeEntity?>(null) }
+    var recipeToDelete by remember { mutableStateOf<RecipeEntity?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
     var showOwnerMenu by remember { mutableStateOf(false) }
@@ -111,7 +111,6 @@ fun RecipesScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End
             ) {
-                // Sort Box
                 Box {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -168,7 +167,6 @@ fun RecipesScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Filter Box
                 Box {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -227,7 +225,6 @@ fun RecipesScreen(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                // Owner Filter Box
                 Box {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -362,6 +359,7 @@ fun RecipesScreen(
     }
 }
 
+// Dialog for adding or editing a recipe
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddRecipeDialog(
@@ -456,7 +454,6 @@ fun AddRecipeDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Name field
                 Column {
                     Text(
                         text = "Nazwa przepisu",
@@ -471,7 +468,6 @@ fun AddRecipeDialog(
                     )
                 }
 
-                // Image Picker
                 Column {
                     Text(
                         text = "Zdjęcie",
@@ -533,7 +529,6 @@ fun AddRecipeDialog(
                     }
                 }
 
-                // Category selection
                 Column {
                     Text(
                         text = "Kategoria",
@@ -559,7 +554,6 @@ fun AddRecipeDialog(
                     }
                 }
 
-                // Ingredients list
                 Column {
                     Text(
                         text = "Składniki",
@@ -712,7 +706,6 @@ fun AddRecipeDialog(
                     }
                 }
 
-                // Instructions field
                 Column {
                     Text(
                         text = "Instrukcja przygotowania",
@@ -760,6 +753,7 @@ fun AddRecipeDialog(
     )
 }
 
+// Individual recipe card item
 @Composable
 fun RecipeItem(
     recipe: RecipeWithIngredients,
@@ -780,7 +774,6 @@ fun RecipeItem(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
     ) {
         Column {
-            // Image Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -809,7 +802,6 @@ fun RecipeItem(
                     }
                 }
 
-                // Availability Badge
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -830,7 +822,6 @@ fun RecipeItem(
                     )
                 }
 
-                // Owner Tag (only for synced recipes)
                 if (!recipe.recipe.isUserCreated && recipe.recipe.ownerName.isNotEmpty()) {
                     Surface(
                         modifier = Modifier
@@ -850,7 +841,6 @@ fun RecipeItem(
                 }
             }
 
-            // Info Section
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -983,6 +973,8 @@ fun RecipeItem(
     }
 }
 
+// Dialog for playing recipe video
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayerDialog(videoUrl: String, onDismiss: () -> Unit) {
     val context = LocalContext.current
@@ -1042,7 +1034,6 @@ fun VideoPlayerDialog(videoUrl: String, onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Close Button
                 IconButton(
                     onClick = onDismiss,
                     modifier = Modifier.align(Alignment.TopStart).padding(8.dp)
@@ -1050,7 +1041,6 @@ fun VideoPlayerDialog(videoUrl: String, onDismiss: () -> Unit) {
                     Icon(Icons.Default.Close, contentDescription = "Zamknij", tint = Color.White)
                 }
 
-                // Fullscreen Toggle Button
                 IconButton(
                     onClick = { isFullscreen = !isFullscreen },
                     modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)

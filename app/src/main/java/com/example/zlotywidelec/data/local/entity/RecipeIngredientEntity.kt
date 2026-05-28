@@ -7,6 +7,9 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 import java.util.UUID
 
+/**
+ * Entity representing an ingredient within a specific recipe.
+ */
 @Serializable
 @Entity(
     tableName = "recipe_ingredients",

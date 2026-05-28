@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -17,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Kitchen
@@ -77,6 +75,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     var sortHeaderWidth by remember { mutableIntStateOf(0) }
     val hasCheckedItems = items.any { it.isChecked }
 
+    // Shopping list main layout
     Scaffold(
         floatingActionButton = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -115,6 +114,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
                 .padding(padding)
                 .fillMaxSize()
         ) {
+            // Sort and filter headers
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -276,8 +276,10 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
             }
 
             if (items.isEmpty()) {
+                // Empty list state
                 EmptyShoppingListMessage()
             } else {
+                // Shopping items list
                 Surface(
                     modifier = Modifier
                         .padding(horizontal = 16.dp)
@@ -311,6 +313,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
         }
     }
 
+    // Add item dialog
     if (showAddDialog) {
         AddItemDialog(
             suggestions = suggestions,
@@ -321,6 +324,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
         )
     }
 
+    // Edit item dialog
     itemToEdit?.let { item ->
         AddItemDialog(
             initialItem = item,
@@ -333,6 +337,7 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     }
 }
 
+// Message shown when list is empty
 @Composable
 fun EmptyShoppingListMessage() {
     Box(
@@ -356,6 +361,7 @@ fun EmptyShoppingListMessage() {
     }
 }
 
+// Single shopping list item row
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ShoppingListItem(
@@ -385,9 +391,9 @@ fun ShoppingListItem(
                 modifier = Modifier.size(12.dp)
             )
         }
-        
+
         Spacer(modifier = Modifier.width(8.dp))
-        
+
         Column(modifier = Modifier.weight(1.0f)) {
             Text(
                 text = item.name,
@@ -434,6 +440,7 @@ fun ShoppingListItem(
     }
 }
 
+// Dialog for adding or editing shopping items
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddItemDialog(
@@ -444,7 +451,7 @@ fun AddItemDialog(
 ) {
     var name by remember { mutableStateOf(initialItem?.name ?: "") }
     var amountStr by remember { mutableStateOf(initialItem?.let { if (it.amount > 0) (if (it.amount % 1.0 == 0.0) it.amount.toInt().toString() else it.amount.toString()) else "" } ?: "") }
-    
+
     val tagOptions = listOf(
         "warzywa" to "Warzywa",
         "owoce" to "Owoce",
@@ -460,7 +467,7 @@ fun AddItemDialog(
         "sosy" to "Sosy"
     )
     var selectedTag by remember { mutableStateOf(initialItem?.tag ?: "") }
-    
+
     val prefixOptions = listOf(
         "" to "—",
         "m" to "mili",
@@ -473,7 +480,7 @@ fun AddItemDialog(
         "l" to "litry",
         "Inne" to "Inne"
     )
-    
+
     var selectedPrefix by remember {
         mutableStateOf(initialItem?.let { item ->
             val unit = item.unit
@@ -495,7 +502,7 @@ fun AddItemDialog(
             if (baseMatch == null) unit else ""
         } ?: "")
     }
-    
+
     var expandedNameSuggestions by remember { mutableStateOf(false) }
     var expandedPrefixDropdown by remember { mutableStateOf(false) }
     var expandedBaseUnitDropdown by remember { mutableStateOf(false) }
@@ -517,7 +524,7 @@ fun AddItemDialog(
 
     val customUnitSuggestions = remember(suggestions) {
         suggestions.map { it.unit }.filter { unit ->
-            val isStandard = baseUnitOptions.any { 
+            val isStandard = baseUnitOptions.any {
                 it.first != "Inne" && (unit == it.first || prefixOptions.any { p -> p.first.isNotEmpty() && unit == p.first + it.first })
             }
             !isStandard
@@ -538,7 +545,7 @@ fun AddItemDialog(
         title = { Text(if (initialItem == null) "Dodaj do listy" else "Edytuj produkt", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Row 1: Name
+                // Name selection
                 Column {
                     Text(
                         text = "Nazwa produktu",
@@ -608,7 +615,7 @@ fun AddItemDialog(
                     }
                 }
 
-                // Row 1.5: Tag Selection (Chips)
+                // Tag Selection (Chips)
                 Text(
                     text = "Kategoria",
                     style = MaterialTheme.typography.labelSmall,
@@ -622,8 +629,8 @@ fun AddItemDialog(
                     items(tagOptions) { (tagValue, label) ->
                         FilterChip(
                             selected = selectedTag == tagValue,
-                            onClick = { 
-                                selectedTag = if (selectedTag == tagValue) "" else tagValue 
+                            onClick = {
+                                selectedTag = if (selectedTag == tagValue) "" else tagValue
                             },
                             label = { Text(label) },
                             colors = FilterChipDefaults.filterChipColors(
@@ -634,7 +641,7 @@ fun AddItemDialog(
                     }
                 }
 
-                // Row 2: Amount
+                // Amount input
                 Column {
                     Text(
                         text = "Ilość",
@@ -657,7 +664,7 @@ fun AddItemDialog(
                     )
                 }
 
-                // Row 3: Prefix and Base Unit
+                // Prefix and Base Unit selection
                 val showPrefix = selectedBaseUnit == "g" || selectedBaseUnit == "l"
                 val filteredPrefixOptions = remember(selectedBaseUnit) {
                     if (selectedBaseUnit == "l") {
@@ -765,6 +772,7 @@ fun AddItemDialog(
                     }
                 }
 
+                // Custom unit input
                 if (selectedBaseUnit == "Inne") {
                     Column {
                         Text(

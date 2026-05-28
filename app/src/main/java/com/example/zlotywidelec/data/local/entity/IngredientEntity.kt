@@ -5,6 +5,9 @@ import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 import java.util.UUID
 
+/**
+ * Entity representing an ingredient in the shopping list or fridge.
+ */
 @Serializable
 @Entity(tableName = "ingredients")
 data class IngredientEntity(

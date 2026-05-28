@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+/**
+ * Enum defining sort orders for the fridge list.
+ */
 enum class FridgeSortOrder {
     NAME_ASC,
     NAME_DESC,
@@ -25,6 +28,10 @@ enum class FridgeSortOrder {
     CATEGORY_DESC
 }
 
+/**
+ * ViewModel for managing the fridge screen state and operations.
+ * Handles searching, sorting, filtering, adding, and deleting ingredients in the fridge.
+ */
 class FridgeViewModel(
     private val ingredientDao: IngredientDao,
     private val syncManager: DriveSyncManager
@@ -156,6 +163,9 @@ class FridgeViewModel(
     }
 }
 
+/**
+ * Factory for creating [FridgeViewModel] with required dependencies.
+ */
 class FridgeViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val syncManager: DriveSyncManager

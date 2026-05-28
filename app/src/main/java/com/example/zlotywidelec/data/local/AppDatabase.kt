@@ -17,6 +17,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/**
+ * Main database class for the application.
+ * Defines the entities and provides access to the DAOs.
+ */
 @Database(
     entities = [
         IngredientEntity::class,
@@ -76,7 +80,6 @@ abstract class AppDatabase : RoomDatabase() {
             suspend fun populateDatabase(db: AppDatabase) {
                 val dao = db.ingredientDao()
                 
-                // Initial Suggestions
                 val initialSuggestions = listOf(
                     ProductSuggestionEntity("Mleko", "litr", "nabiał"),
                     ProductSuggestionEntity("Chleb", "bochenek", "pieczywo"),

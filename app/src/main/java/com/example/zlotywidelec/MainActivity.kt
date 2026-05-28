@@ -17,9 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
@@ -53,6 +51,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            /* App dependency initialization */
             val context = LocalContext.current
             val database = remember { AppDatabase.getDatabase(context) }
             val backupManager = remember { DataBackupManager(context, database.ingredientDao(), database.recipeDao()) }
@@ -90,6 +89,7 @@ fun ZlotyWidelecApp(
     val photoStorageUri by settingsViewModel.photoStorageUri.collectAsState()
     var showFolderPrompt by remember { mutableStateOf(false) }
 
+    /* Google Sign In handling */
     val googleSignInLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -112,6 +112,7 @@ fun ZlotyWidelecApp(
         }
     }
 
+    /* Folder picker for photos */
     val folderPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
@@ -124,9 +125,10 @@ fun ZlotyWidelecApp(
         }
     }
 
+    /* Photo folder setup prompt */
     if (showFolderPrompt && photoStorageUri == null) {
         AlertDialog(
-            onDismissRequest = { /* Mandatory */ },
+            onDismissRequest = { },
             title = { Text("Konfiguracja folderu zdjęć") },
             text = { Text("Wybierz folder, w którym będą przechowywane zdjęcia Twoich przepisów. Jest to wymagane do poprawnego działania kopii zapasowej.") },
             confirmButton = {
@@ -137,6 +139,7 @@ fun ZlotyWidelecApp(
         )
     }
 
+    /* ViewModels initialization */
     val shoppingViewModel: ShoppingViewModel = viewModel(
         factory = ShoppingViewModelFactory(database.ingredientDao(), syncManager)
     )
@@ -150,6 +153,7 @@ fun ZlotyWidelecApp(
     val message by settingsViewModel.message.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    /* Snackbar message handling */
     LaunchedEffect(message) {
         message?.let {
             snackbarHostState.showSnackbar(it)
@@ -179,6 +183,7 @@ fun ZlotyWidelecApp(
         }
     }
 
+    /* Main Navigation Layout */
     NavigationSuiteScaffold(
         navigationSuiteItems = {
             AppDestinations.entries.filter { it.isMainDestination }.forEach { destination ->
@@ -207,11 +212,11 @@ fun ZlotyWidelecApp(
             navigationBarContainerColor = MaterialTheme.colorScheme.background,
             navigationBarContentColor = MaterialTheme.colorScheme.onBackground
         )
-    )
-{
+    ) {
         Scaffold(
             topBar = {
                 Column {
+                    /* Top App Bar with Search functionality */
                     TopAppBar(
                         navigationIcon = {
                             if (isSearchActive && currentDestination.showSearch) {
@@ -256,7 +261,7 @@ fun ZlotyWidelecApp(
                                         },
                                         textStyle = TextStyle(
                                             color = MaterialTheme.colorScheme.onBackground,
-                                            fontSize = 20.sp // Slightly adjusted to look better in the bar
+                                            fontSize = 20.sp
                                         ),
                                         cursorBrush = SolidColor(MaterialTheme.colorScheme.onBackground),
                                         modifier = Modifier
@@ -318,8 +323,8 @@ fun ZlotyWidelecApp(
             bottomBar = {
                 HorizontalDivider(color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
             }
-        )
-{ padding ->
+        ) { padding ->
+            /* Screen switching logic */
             Box(
                 modifier = Modifier
                     .padding(padding)
@@ -356,6 +361,7 @@ fun ZlotyWidelecApp(
     }
 }
 
+/* App destination enum with icons and labels */
 enum class AppDestinations(
     val label: String,
     val icon: ImageVector,

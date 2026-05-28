@@ -6,6 +6,9 @@ import com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
+/**
+ * Helper class to represent a recipe together with its list of ingredients.
+ */
 @Serializable
 data class RecipeWithIngredients(
     @Embedded val recipe: RecipeEntity,
@@ -16,6 +19,9 @@ data class RecipeWithIngredients(
     val ingredients: List<RecipeIngredientEntity>
 )
 
+/**
+ * DAO for managing recipes and their associated ingredients.
+ */
 @Dao
 interface RecipeDao {
     @Transaction
@@ -61,7 +67,7 @@ interface RecipeDao {
 
     @Transaction
     suspend fun updateRecipeWithIngredients(recipe: RecipeEntity, ingredients: List<RecipeIngredientEntity>) {
-        insertRecipe(recipe) // Replaces if same ID due to REPLACE strategy
+        insertRecipe(recipe)
         deleteIngredientsByRecipeId(recipe.id)
         val ingredientsWithId = ingredients.map { it.copy(recipeId = recipe.id) }
         insertIngredients(ingredientsWithId)

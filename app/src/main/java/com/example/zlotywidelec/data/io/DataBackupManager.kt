@@ -19,6 +19,9 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
+/**
+ * Data class representing the full application data for backup.
+ */
 @Serializable
 data class AppDataBackup(
     val shoppingList: List<IngredientEntity>? = null,
@@ -26,6 +29,9 @@ data class AppDataBackup(
     val userRecipes: List<RecipeWithIngredientsBackup>? = null
 )
 
+/**
+ * Helper class for backing up recipes with their associated ingredients and media files.
+ */
 @Serializable
 data class RecipeWithIngredientsBackup(
     val recipe: RecipeEntity,
@@ -34,6 +40,9 @@ data class RecipeWithIngredientsBackup(
     val localVideoFileName: String? = null
 )
 
+/**
+ * Manager class to handle local data backup and restoration (export/import).
+ */
 class DataBackupManager(
     val context: Context,
     private val ingredientDao: IngredientDao,

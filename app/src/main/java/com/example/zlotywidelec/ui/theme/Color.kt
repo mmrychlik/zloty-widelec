@@ -2,6 +2,11 @@ package com.example.zlotywidelec.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+/**
+ * Color definitions for the application theme.
+ * Includes colors for both light and dark modes.
+ */
+
 val BeigeBackground = Color(0xFFF7EFE2)
 val BeigeAccent = Color(0xFFEEDCBF)
 val DarkText = Color(0xFF2D2926)

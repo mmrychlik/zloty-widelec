@@ -16,6 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.example.zlotywidelec.ui.viewmodel.SettingsViewModel
 
+/**
+ * Composable representing the about section in settings.
+ */
 @Composable
 fun AboutSection() {
     Column(
@@ -45,19 +48,21 @@ fun AboutSection() {
     }
 }
 
+/**
+ * Main Settings Screen of the application.
+ * Provides options for dark mode, data storage, Google Drive sync, and data management.
+ */
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onSignInClick: () -> Unit
 ) {
     val isDarkMode by viewModel.isDarkMode.collectAsState()
-    val message by viewModel.message.collectAsState()
     val photoStorageUri by viewModel.photoStorageUri.collectAsState()
     val userAccount by viewModel.userAccount.collectAsState()
 
     var showClearDataDialog by remember { mutableStateOf(false) }
     var showExportDataDialog by remember { mutableStateOf(false) }
-    var showShareDialog by remember { mutableStateOf(false) }
 
     val folderPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
@@ -263,6 +268,9 @@ fun SettingsScreen(
     }
 }
 
+/**
+ * Dialog for selecting data to export.
+ */
 @Composable
 fun ExportDataDialog(
     onDismiss: () -> Unit,
@@ -328,6 +336,9 @@ fun ExportDataDialog(
     )
 }
 
+/**
+ * Dialog for selecting data to clear.
+ */
 @Composable
 fun ClearDataDialog(
     onDismiss: () -> Unit,

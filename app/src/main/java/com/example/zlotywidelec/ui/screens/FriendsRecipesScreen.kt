@@ -1,7 +1,5 @@
 package com.example.zlotywidelec.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,22 +11,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.zlotywidelec.data.local.entity.FriendEntity
+import com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity
 import com.example.zlotywidelec.ui.viewmodel.RecipeViewModel
 import com.example.zlotywidelec.ui.viewmodel.SettingsViewModel
-import kotlinx.coroutines.launch
 
+// Screen for managing friends and their synchronization settings
 @Composable
 fun FriendsRecipesScreen(
     viewModel: RecipeViewModel,
     settingsViewModel: SettingsViewModel,
-    onAddToShoppingList: (List<com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity>) -> Unit
+    onAddToShoppingList: (List<RecipeIngredientEntity>) -> Unit
 ) {
     val friends by settingsViewModel.friends.collectAsState()
     val userAccount by settingsViewModel.userAccount.collectAsState()
@@ -128,6 +125,7 @@ fun FriendsRecipesScreen(
     }
 }
 
+// Individual friend item with sync settings
 @Composable
 fun FriendItem(
     friend: FriendEntity,
@@ -220,6 +218,7 @@ fun FriendItem(
     }
 }
 
+// Toggle for sync settings
 @Composable
 fun SyncToggle(
     label: String,

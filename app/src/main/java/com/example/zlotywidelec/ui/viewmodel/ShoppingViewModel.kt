@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+/**
+ * Enum defining sort orders for the shopping list.
+ */
 enum class ShoppingSortOrder {
     NAME_ASC,
     NAME_DESC,
@@ -25,6 +28,11 @@ enum class ShoppingSortOrder {
     CATEGORY_DESC
 }
 
+/**
+ * ViewModel for managing the shopping list screen state and operations.
+ * Handles adding, updating, deleting, and checking items, as well as syncing with Google Drive.
+ * Includes logic for calculating missing ingredients from recipes based on fridge contents.
+ */
 class ShoppingViewModel(
     private val ingredientDao: IngredientDao,
     private val syncManager: DriveSyncManager
@@ -279,6 +287,9 @@ class ShoppingViewModel(
     }
 }
 
+/**
+ * Factory for creating [ShoppingViewModel] with required dependencies.
+ */
 class ShoppingViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val syncManager: DriveSyncManager

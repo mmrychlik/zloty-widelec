@@ -13,10 +13,17 @@ import com.example.zlotywidelec.data.local.entity.RecipeIngredientEntity
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+/**
+ * Enum defining sort orders for recipes.
+ */
 enum class RecipeSortOrder {
     NAME_ASC, NAME_DESC, DATE_ASC, DATE_DESC, AVAILABILITY_ASC, AVAILABILITY_DESC
 }
 
+/**
+ * ViewModel for managing recipes.
+ * Handles recipe CRUD operations, filtering, sorting, and availability calculation based on fridge contents.
+ */
 class RecipeViewModel(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,
@@ -384,6 +391,9 @@ class RecipeViewModel(
     }
 }
 
+/**
+ * Factory for creating [RecipeViewModel] with required dependencies.
+ */
 class RecipeViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,

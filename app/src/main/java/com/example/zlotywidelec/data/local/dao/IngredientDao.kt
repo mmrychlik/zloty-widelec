@@ -5,6 +5,10 @@ import com.example.zlotywidelec.data.local.entity.IngredientEntity
 import com.example.zlotywidelec.data.local.entity.ProductSuggestionEntity
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * DAO for managing ingredients in the shopping list and fridge,
+ * as well as product suggestions.
+ */
 @Dao
 interface IngredientDao {
     @Query("SELECT * FROM ingredients WHERE isInFridge = 0 ORDER BY isChecked ASC, id DESC")

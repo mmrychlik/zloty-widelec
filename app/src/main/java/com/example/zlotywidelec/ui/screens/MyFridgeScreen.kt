@@ -85,6 +85,7 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
                 .padding(padding)
                 .fillMaxSize()
         ) {
+            /* Sort and filter controls */
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -92,6 +93,7 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End
             ) {
+                /* Sort menu */
                 Box {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -162,6 +164,7 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
 
                 Spacer(modifier = Modifier.width(8.dp))
 
+                /* Filter menu */
                 Box {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -257,6 +260,7 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
         }
     }
 
+    /* Add product dialog */
     if (showAddDialog) {
         AddFridgeItemDialog(
             suggestions = suggestions,
@@ -267,6 +271,7 @@ fun MyFridgeScreen(viewModel: FridgeViewModel) {
         )
     }
 
+    /* Product details dialog */
     selectedItemForDetails?.let { item ->
         IngredientDetailsDialog(
             item = item,
@@ -524,7 +529,7 @@ fun AddFridgeItemDialog(
         title = { Text("Dodaj do lodówki", color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Row 1: Name
+                /* Product name field */
                 Column {
                     Text(
                         text = "Nazwa produktu",
@@ -594,7 +599,7 @@ fun AddFridgeItemDialog(
                     }
                 }
 
-                // Row 1.5: Tag Selection (Chips)
+                /* Category selection */
                 Text(
                     text = "Kategoria",
                     style = MaterialTheme.typography.labelSmall,
@@ -620,7 +625,7 @@ fun AddFridgeItemDialog(
                     }
                 }
 
-                // Row 2: Amount
+                /* Amount field */
                 Column {
                     Text(
                         text = "Ilość",
@@ -643,7 +648,7 @@ fun AddFridgeItemDialog(
                     )
                 }
 
-                // Row 3: Prefix and Base Unit
+                /* Unit selection */
                 val showPrefix = selectedBaseUnit == "g" || selectedBaseUnit == "l"
                 val filteredPrefixOptions = remember(selectedBaseUnit) {
                     if (selectedBaseUnit == "l") {
@@ -751,6 +756,7 @@ fun AddFridgeItemDialog(
                     }
                 }
 
+                /* Custom unit field */
                 if (selectedBaseUnit == "Inne") {
                     Column {
                         Text(
