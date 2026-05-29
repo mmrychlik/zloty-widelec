@@ -77,6 +77,9 @@ fun FriendsRecipesScreen(
                             onUpdateSync = { recipes, fridge, shopping ->
                                 settingsViewModel.updateFriendSyncSettings(friend, recipes, fridge, shopping)
                             },
+                            onUpdateName = { name ->
+                                settingsViewModel.updateFriendName(friend, name)
+                            },
                             onDelete = { settingsViewModel.deleteFriend(friend) }
                         )
                     }
@@ -131,9 +134,11 @@ fun FriendsRecipesScreen(
 fun FriendItem(
     friend: FriendEntity,
     onUpdateSync: (Boolean, Boolean, Boolean) -> Unit,
+    onUpdateName: (String) -> Unit,
     onDelete: () -> Unit
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showEditNameDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -160,8 +165,13 @@ fun FriendItem(
                         )
                     }
                 }
-                IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(Icons.Default.Close, contentDescription = "Usuń znajomego", tint = Color.Red)
+                Row {
+                    IconButton(onClick = { showEditNameDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edytuj nazwę", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    IconButton(onClick = { showDeleteConfirm = true }) {
+                        Icon(Icons.Default.Close, contentDescription = "Usuń znajomego", tint = Color.Red)
+                    }
                 }
             }
 
@@ -212,6 +222,38 @@ fun FriendItem(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("Anuluj")
+                }
+            }
+        )
+    }
+
+    if (showEditNameDialog) {
+        var newName by remember { mutableStateOf(friend.name) }
+        AlertDialog(
+            onDismissRequest = { showEditNameDialog = false },
+            title = { Text("Edytuj nazwę") },
+            text = {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    label = { Text("Imię znajomego") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onUpdateName(newName)
+                        showEditNameDialog = false
+                    }
+                ) {
+                    Text("Zapisz")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditNameDialog = false }) {
                     Text("Anuluj")
                 }
             }

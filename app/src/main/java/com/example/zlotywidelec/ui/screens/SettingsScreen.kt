@@ -16,9 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.example.zlotywidelec.ui.viewmodel.SettingsViewModel
 
-/**
- * Composable representing the about section in settings.
- */
 @Composable
 fun AboutSection() {
     Column(

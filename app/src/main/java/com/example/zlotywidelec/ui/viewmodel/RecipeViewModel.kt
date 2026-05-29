@@ -29,6 +29,7 @@ enum class RecipeSortOrder {
 class RecipeViewModel(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,
+    private val friendDao: com.example.zlotywidelec.data.local.dao.FriendDao,
     private val backupManager: com.example.zlotywidelec.data.io.DataBackupManager,
     private val syncManager: com.example.zlotywidelec.data.sync.DriveSyncManager
 ) : ViewModel() {
@@ -45,9 +46,14 @@ class RecipeViewModel(
     private val _filterOwner = MutableStateFlow<String?>(null) // null = Wszystkie, "WŁASNE" = Moje, else = Friend name
     val filterOwner: StateFlow<String?> = _filterOwner
 
-    val availableOwners = recipeDao.getAllRecipes().map { recipes ->
+    val availableOwners = combine(recipeDao.getAllRecipes(), friendDao.getAllFriends()) { recipes, friends ->
         recipes.filter { !it.recipe.isUserCreated && it.recipe.ownerName.isNotBlank() }
-            .map { it.recipe.ownerName }
+            .map { rwI -> 
+                val ownerInfo = rwI.recipe.ownerName
+                friends.find { it.email == ownerInfo || it.name == ownerInfo }?.let { 
+                    it.name.ifBlank { it.email }
+                } ?: ownerInfo
+            }
             .distinct()
             .sorted()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -69,20 +75,38 @@ class RecipeViewModel(
 
     val allFilteredRecipes = combine(
         recipeDao.getAllRecipes(),
+        friendDao.getAllFriends(),
         _searchQuery,
         _sortOrder,
         _filterTags,
         _filterOwner,
         fridgeItems
     ) { args: Array<Any?> ->
-        @Suppress("UNCHECKED_CAST")
+        val recipes = args[0] as List<RecipeWithIngredients>
+        val friends = args[1] as List<com.example.zlotywidelec.data.local.entity.FriendEntity>
+        val query = args[2] as String
+        val sort = args[3] as RecipeSortOrder
+        val tags = args[4] as Set<String>
+        val ownerFilter = args[5] as String?
+        val fridge = args[6] as List<IngredientEntity>
+
+        val mappedRecipes = recipes.map { rwI ->
+            if (!rwI.recipe.isUserCreated) {
+                val ownerInfo = rwI.recipe.ownerName
+                val friend = friends.find { it.email == ownerInfo || it.name == ownerInfo }
+                if (friend != null && friend.name.isNotBlank()) {
+                    rwI.copy(recipe = rwI.recipe.copy(ownerName = friend.name))
+                } else rwI
+            } else rwI
+        }
+
         filterAndSortRecipes(
-            args[0] as List<RecipeWithIngredients>,
-            args[1] as String,
-            args[2] as RecipeSortOrder,
-            args[3] as Set<String>,
-            args[4] as String?,
-            args[5] as List<IngredientEntity>
+            mappedRecipes,
+            query,
+            sort,
+            tags,
+            ownerFilter,
+            fridge
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -209,9 +233,9 @@ class RecipeViewModel(
                 )
             }
             
-            // Auto-sync after adding
+            // sync
             try {
-                // 1. Upload image if it's local
+                // 1. upload image
                 if (finalImageUrl.startsWith("content://")) {
                     val uri = Uri.parse(finalImageUrl)
                     val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "img_${recipe.uuid}.jpg"
@@ -220,7 +244,7 @@ class RecipeViewModel(
                     }
                 }
 
-                // 2. Upload video if it's local
+                // 2. upload video
                 if (finalVideoUrl.startsWith("content://")) {
                     val uri = Uri.parse(finalVideoUrl)
                     val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "vid_${recipe.uuid}.mp4"
@@ -229,7 +253,7 @@ class RecipeViewModel(
                     }
                 }
 
-                // 3. Upload recipe list
+                // 3. upload recipe list
                 val allUserRecipes = recipeDao.getAllUserRecipesSync()
                 syncManager.uploadCategoryData(
                     com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
@@ -245,8 +269,7 @@ class RecipeViewModel(
     fun deleteRecipe(recipe: RecipeEntity) {
         viewModelScope.launch {
             recipeDao.deleteRecipe(recipe)
-            
-            // Auto-sync after deleting
+
             try {
                 val allUserRecipes = recipeDao.getAllUserRecipesSync()
                 syncManager.uploadCategoryData(
@@ -297,9 +320,9 @@ class RecipeViewModel(
                 )
             }
 
-            // Auto-sync after updating
+            // sync
             try {
-                // 1. Upload image if it's local
+                // 1. upload image
                 if (finalImageUrl.startsWith("content://")) {
                     val uri = Uri.parse(finalImageUrl)
                     val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "img_${updatedRecipe.uuid}.jpg"
@@ -308,7 +331,7 @@ class RecipeViewModel(
                     }
                 }
 
-                // 2. Upload video if it's local
+                // 2. upload video
                 if (finalVideoUrl.startsWith("content://")) {
                     val uri = Uri.parse(finalVideoUrl)
                     val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "vid_${updatedRecipe.uuid}.mp4"
@@ -317,7 +340,7 @@ class RecipeViewModel(
                     }
                 }
 
-                // 3. Upload recipe list
+                // 3. upload recipe list
                 val allUserRecipes = recipeDao.getAllUserRecipesSync()
                 syncManager.uploadCategoryData(
                     com.example.zlotywidelec.data.sync.DriveSyncManager.Category.RECIPES,
@@ -359,7 +382,7 @@ class RecipeViewModel(
                 }
             }
             
-            // Auto-sync after updating fridge
+            // sync
             try {
                 val allFridgeItems = ingredientDao.getAllFridgeItemsSync()
                 syncManager.uploadCategoryData(
@@ -472,19 +495,17 @@ class RecipeViewModel(
     }
 }
 
-/**
- * Factory for creating [RecipeViewModel] with required dependencies.
- */
 class RecipeViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,
+    private val friendDao: com.example.zlotywidelec.data.local.dao.FriendDao,
     private val backupManager: com.example.zlotywidelec.data.io.DataBackupManager,
     private val syncManager: com.example.zlotywidelec.data.sync.DriveSyncManager
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(RecipeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return RecipeViewModel(ingredientDao, recipeDao, backupManager, syncManager) as T
+            return RecipeViewModel(ingredientDao, recipeDao, friendDao, backupManager, syncManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

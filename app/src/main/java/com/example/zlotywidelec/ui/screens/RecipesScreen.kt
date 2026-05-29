@@ -393,8 +393,6 @@ fun AddRecipeDialog(
         } ?: "")
     }
     var selectedTag by remember { mutableStateOf(initialRecipe?.recipe?.tag ?: "") }
-
-    val context = LocalContext.current
     
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),

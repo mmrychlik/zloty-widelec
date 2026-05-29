@@ -144,7 +144,6 @@ class FridgeViewModel(
                 ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit, tag = tag)
             )
 
-            // Auto-sync
             try {
                 val allFridgeItems = ingredientDao.getAllFridgeItemsSync()
                 syncManager.uploadCategoryData(
@@ -212,9 +211,6 @@ class FridgeViewModel(
     }
 }
 
-/**
- * Factory for creating [FridgeViewModel] with required dependencies.
- */
 class FridgeViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val syncManager: DriveSyncManager

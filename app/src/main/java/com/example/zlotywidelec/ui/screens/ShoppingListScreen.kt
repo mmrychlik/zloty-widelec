@@ -283,7 +283,6 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
             }
 
             if (items.isEmpty()) {
-                // Empty list state
                 EmptyShoppingListMessage()
             } else {
                 // Shopping items list
@@ -320,7 +319,6 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
         }
     }
 
-    // Add item dialog
     if (showAddDialog) {
         AddItemDialog(
             suggestions = suggestions,
@@ -331,7 +329,6 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
         )
     }
 
-    // Edit item dialog
     itemToEdit?.let { item ->
         AddItemDialog(
             initialItem = item,
@@ -344,7 +341,6 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     }
 }
 
-// Message shown when list is empty
 @Composable
 fun EmptyShoppingListMessage() {
     Box(

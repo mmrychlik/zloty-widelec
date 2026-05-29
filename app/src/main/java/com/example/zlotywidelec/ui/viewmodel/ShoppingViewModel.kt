@@ -155,8 +155,7 @@ class ShoppingViewModel(
             ingredientDao.insertProductSuggestion(
                 ProductSuggestionEntity(name = capitalizedName, defaultUnit = unit, tag = tag)
             )
-            
-            // Auto-sync
+
             syncShopping()
         }
     }
@@ -190,8 +189,7 @@ class ShoppingViewModel(
     fun toggleItemChecked(item: IngredientEntity) {
         viewModelScope.launch {
             ingredientDao.updateIngredient(item.copy(isChecked = !item.isChecked))
-            
-            // Auto-sync
+
             syncShopping()
         }
     }
@@ -199,8 +197,7 @@ class ShoppingViewModel(
     fun deleteItem(item: IngredientEntity) {
         viewModelScope.launch {
             ingredientDao.deleteIngredient(item)
-            
-            // Auto-sync
+
             syncShopping()
         }
     }
@@ -220,7 +217,7 @@ class ShoppingViewModel(
 
             checkedItems.forEach { shoppingItem ->
                 val normalizedName = shoppingItem.name.normalize()
-                // Find any matching item in fridge by name, we'll merge and normalize units
+                // Find any matching item in fridge by name, merge and normalize
                 val existingInFridge = fridgeItems.find { 
                     it.name.normalize() == normalizedName 
                 }
@@ -251,9 +248,8 @@ class ShoppingViewModel(
                 }
             }
             
-            // Auto-sync
+            // sync
             try {
-                // Sync both since moving affects both
                 val allShoppingItems = ingredientDao.getAllShoppingItemsSync()
                 syncManager.uploadCategoryData(
                     com.example.zlotywidelec.data.sync.DriveSyncManager.Category.SHOPPING,
@@ -310,7 +306,6 @@ class ShoppingViewModel(
                 }
             }
 
-            // Auto-sync
             syncShopping()
         }
     }
@@ -362,9 +357,6 @@ class ShoppingViewModel(
     }
 }
 
-/**
- * Factory for creating [ShoppingViewModel] with required dependencies.
- */
 class ShoppingViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val syncManager: DriveSyncManager

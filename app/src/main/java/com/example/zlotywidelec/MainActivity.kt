@@ -147,7 +147,7 @@ fun ZlotyWidelecApp(
         factory = FridgeViewModelFactory(database.ingredientDao(), syncManager)
     )
     val recipeViewModel: RecipeViewModel = viewModel(
-        factory = RecipeViewModelFactory(database.ingredientDao(), database.recipeDao(), backupManager, syncManager)
+        factory = RecipeViewModelFactory(database.ingredientDao(), database.recipeDao(), database.friendDao(), backupManager, syncManager)
     )
 
     val message by settingsViewModel.message.collectAsState()

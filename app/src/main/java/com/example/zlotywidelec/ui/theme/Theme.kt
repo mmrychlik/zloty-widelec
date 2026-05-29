@@ -61,10 +61,6 @@ private val LightColorScheme = lightColorScheme(
     surfaceTint = Color.Transparent
 )
 
-/**
- * Main theme configuration for the Zloty Widelec application.
- * Manages light and dark color schemes and applies them to the Material 3 design system.
- */
 @Composable
 fun ZlotyWidelecTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

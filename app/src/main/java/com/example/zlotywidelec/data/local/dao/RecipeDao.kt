@@ -72,4 +72,7 @@ interface RecipeDao {
         val ingredientsWithId = ingredients.map { it.copy(recipeId = recipe.id) }
         insertIngredients(ingredientsWithId)
     }
+
+    @Query("UPDATE recipes SET ownerName = :newName WHERE ownerName = :oldName AND isUserCreated = 0")
+    suspend fun updateOwnerName(oldName: String, newName: String)
 }

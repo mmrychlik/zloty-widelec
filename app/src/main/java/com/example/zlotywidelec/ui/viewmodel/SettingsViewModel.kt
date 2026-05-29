@@ -83,6 +83,12 @@ class SettingsViewModel(
         }
     }
 
+    fun updateFriendName(friend: FriendEntity, name: String) {
+        viewModelScope.launch {
+            friendDao.updateFriend(friend.copy(name = name))
+        }
+    }
+
     fun deleteFriend(friend: FriendEntity) {
         viewModelScope.launch {
             friendDao.deleteFriend(friend)
@@ -98,8 +104,8 @@ class SettingsViewModel(
                 var fridgeSuccess = true
                 var totalImportedCount = 0
 
-                // 1. Own Data Sync
-                // 1.1 Sync Recipes
+
+                // sync recipes
                 if (_syncRecipes.value) {
                     val remoteRecipes = syncManager.downloadCategoryData(
                         DriveSyncManager.Category.RECIPES,
@@ -114,7 +120,6 @@ class SettingsViewModel(
                                 remote.ingredients
                             )
                         } else if (remote.recipe.lastUpdated > existing.lastUpdated) {
-                            // Update existing recipe if remote is newer
                             recipeDao.updateRecipeWithIngredients(
                                 remote.recipe.copy(id = existing.id, isUserCreated = true),
                                 remote.ingredients
@@ -123,7 +128,7 @@ class SettingsViewModel(
                     }
                     val finalRecipes = recipeDao.getAllUserRecipesSync()
                     
-                    // Upload images and videos for user recipes
+                    // upload image/video
                     finalRecipes.forEach { rwI ->
                         if (rwI.recipe.imageUrl.startsWith("content://")) {
                             try {
@@ -151,8 +156,7 @@ class SettingsViewModel(
 
                     recipesSuccess = syncManager.uploadCategoryData(DriveSyncManager.Category.RECIPES, finalRecipes, kotlinx.serialization.builtins.ListSerializer(com.example.zlotywidelec.data.local.dao.RecipeWithIngredients.serializer()))
                 }
-                
-                // 1.2 Sync Shopping List
+
                 if (_syncShopping.value) {
                     val remoteShopping = syncManager.downloadCategoryData(
                         DriveSyncManager.Category.SHOPPING,
@@ -169,7 +173,6 @@ class SettingsViewModel(
                     shoppingSuccess = syncManager.uploadCategoryData(DriveSyncManager.Category.SHOPPING, finalShopping, kotlinx.serialization.builtins.ListSerializer(com.example.zlotywidelec.data.local.entity.IngredientEntity.serializer()))
                 }
 
-                // 1.3 Sync Fridge
                 if (_syncFridge.value) {
                     val remoteFridge = syncManager.downloadCategoryData(
                         DriveSyncManager.Category.FRIDGE,
@@ -186,10 +189,8 @@ class SettingsViewModel(
                     fridgeSuccess = syncManager.uploadCategoryData(DriveSyncManager.Category.FRIDGE, finalFridge, kotlinx.serialization.builtins.ListSerializer(com.example.zlotywidelec.data.local.entity.IngredientEntity.serializer()))
                 }
 
-                // 2. Friends Data Sync
                 val friendsList = friendDao.getFriendsList()
                 for (friend in friendsList) {
-                    // Sync Friend's Recipes
                     if (friend.syncRecipes) {
                         val friendRecipes = syncManager.downloadCategoryData(
                             DriveSyncManager.Category.RECIPES,
@@ -204,7 +205,7 @@ class SettingsViewModel(
                                 var finalImageUrl = remote.recipe.imageUrl
                                 var finalVideoUrl = remote.recipe.videoUrl
 
-                                // If recipe has image, try to download it from friend's Drive
+                                // download friend image
                                 if (finalImageUrl.startsWith("content://")) {
                                     val fileName = Uri.parse(finalImageUrl).lastPathSegment?.substringAfterLast("/") ?: "img_${remote.recipe.uuid}.jpg"
                                     val imageData = syncManager.downloadImage(fileName, friend.email)
@@ -216,7 +217,7 @@ class SettingsViewModel(
                                     }
                                 }
 
-                                // If recipe has video, try to download it from friend's Drive
+                                // download friend video
                                 if (finalVideoUrl.startsWith("content://")) {
                                     val fileName = Uri.parse(finalVideoUrl).lastPathSegment?.substringAfterLast("/") ?: "vid_${remote.recipe.uuid}.mp4"
                                     val videoData = syncManager.downloadFile(fileName, "video/mp4", friend.email)
@@ -255,14 +256,6 @@ class SettingsViewModel(
                             }
                         }
                     }
-
-                    // Sync Friend's Shopping (Merge into user's list? Or just for view? 
-                    // Based on requirements, it seems like we might want to see them. 
-                    // But for now, let's stick to Recipes as they are integrated into main screen.)
-                    // (Fridge and Shopping are more personal, usually friends don't merge those, but settings exist per-friend)
-                    // If friend.syncFridge is true, we could download and show, but where? 
-                    // The prompt mentions "Friends screen into a dedicated management hub for per-friend synchronization settings"
-                    // and "Integrate friends' recipes into the main Recipes screen".
                     
                     if (friend.syncShopping) {
                         val friendShopping = syncManager.downloadCategoryData(
@@ -272,9 +265,7 @@ class SettingsViewModel(
                         ) ?: emptyList()
                         
                         friendShopping.forEach { remote ->
-                            // For shopping/fridge, maybe we don't auto-import them to the main list yet 
-                            // unless they are explicitly shared/merged. 
-                            // But for now, let's focus on recipes as requested.
+                            // todo
                         }
                     }
 
@@ -413,9 +404,6 @@ class SettingsViewModel(
     }
 }
 
-/**
- * Factory for creating [SettingsViewModel] with required dependencies.
- */
 class SettingsViewModelFactory(
     private val ingredientDao: IngredientDao,
     private val recipeDao: RecipeDao,
