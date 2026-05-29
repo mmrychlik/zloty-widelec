@@ -80,30 +80,37 @@ fun ShoppingListScreen(viewModel: ShoppingViewModel) {
     Scaffold(
         floatingActionButton = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (hasCheckedItems) {
-                    ExtendedFloatingActionButton(
-                        onClick = { viewModel.moveCheckedToFridge() },
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary,
-                        icon = { Icon(Icons.Default.Kitchen, contentDescription = "Dodaj do lodówki") },
-                        text = { Text("Do lodówki") }
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    ExtendedFloatingActionButton(
-                        onClick = { 
-                            viewModel.deleteCheckedItems()
-                            android.media.MediaPlayer.create(context, com.example.zlotywidelec.R.raw.dragon_studio_cash_register_kaching_376867)?.apply {
-                                setOnCompletionListener { release() }
-                                start()
-                            }
-                        },
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary,
-                        icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Wyczyść zaznaczone") },
-                        text = { Text("Kupione") }
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = hasCheckedItems,
+                    enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandHorizontally(),
+                    exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkHorizontally()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ExtendedFloatingActionButton(
+                            onClick = { viewModel.moveCheckedToFridge() },
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary,
+                            icon = { Icon(Icons.Default.Kitchen, contentDescription = "Dodaj do lodówki") },
+                            text = { Text("Do lodówki") }
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        ExtendedFloatingActionButton(
+                            onClick = { 
+                                viewModel.deleteCheckedItems()
+                                android.media.MediaPlayer.create(context, com.example.zlotywidelec.R.raw.dragon_studio_cash_register_kaching_376867)?.apply {
+                                    setOnCompletionListener { release() }
+                                    start()
+                                }
+                            },
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary,
+                            icon = { Icon(Icons.Default.ShoppingCart, contentDescription = "Wyczyść zaznaczone") },
+                            text = { Text("Kupione") }
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                    }
                 }
+
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
                     containerColor = MaterialTheme.colorScheme.secondary,

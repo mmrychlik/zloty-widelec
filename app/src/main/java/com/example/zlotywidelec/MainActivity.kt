@@ -299,7 +299,11 @@ fun ZlotyWidelecApp(
                                     }
                                 }
                                 IconButton(onClick = { isSearchActive = true }) {
-                                    Icon(Icons.Default.Search, contentDescription = "Szukaj", tint = MaterialTheme.colorScheme.onBackground)
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "Szukaj",
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
                                 }
                             }
                             
@@ -308,7 +312,11 @@ fun ZlotyWidelecApp(
                                     isSearchActive = false
                                     currentDestination = AppDestinations.SETTINGS 
                                 }) {
-                                    Icon(Icons.Default.Settings, contentDescription = "Ustawienia", tint = MaterialTheme.colorScheme.onBackground)
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = "Ustawienia",
+                                        tint = MaterialTheme.colorScheme.onBackground
+                                    )
                                 }
                             }
                         },
